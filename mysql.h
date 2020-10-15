@@ -10,7 +10,8 @@
 #define passwd "123456"
 #define db "filevault"
 
-MYSQL *mysql;
+// use "static" to hide from other source files
+static MYSQL *mysql;
 
 //Connect to MySQL, returns 0 upon success, returns -1 upon failure.
 int connect_to_mysql();

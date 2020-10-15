@@ -34,3 +34,7 @@ bool has_table(char *table) {
     }
     return false;
 }
+
+int create_table(char *table) {
+    return 0;
+}

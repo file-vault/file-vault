@@ -51,3 +51,16 @@ bool execute_cud(const char *query) {
     }
     return true;
 }
+
+bool auth(uid_t uid, const char *hash) {
+    char query[200];
+    sprintf(query, "select * from users where uid=%u and password=\"%s\";", uid, hash);
+    if (mysql_query(mysql, query)) {
+        fprintf(stderr, "Query \"%s\" failed: %s\n", query, mysql_error(mysql));
+        return false;
+    }
+    MYSQL_RES *result = mysql_store_result(mysql);
+    if (!(result && mysql_num_rows(result))) return false;
+    mysql_free_result(result);
+    return true;
+}

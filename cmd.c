@@ -30,7 +30,16 @@ int cmd_register() {
 
 int cmd_auth() {
     printf("Auth...\n");
-    //TODO: auth
+    uid_t uid = getuid();
+    char *password = NULL;
+    char *hashed_password = NULL;
+    password = getpass("Enter you password: ");
+    hashed_password = compute_MD5(password);
+    if (!auth(uid, hashed_password)){
+        fprintf(stderr,"Authentication failed.\n");
+        return -1;
+    }
+    printf("Authentication succeed.\n");
     return 0;
 }
 

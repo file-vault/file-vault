@@ -29,4 +29,7 @@ bool create_user_table(uid_t uid);
 //execute MySQL create/update/delete query, returns true upon success, returns false upon failure.
 bool execute_cud(const char *query);
 
+//Authentication.
+bool auth(uid_t uid, const char *hashed_password);
+
 #endif //FILE_VAULT_MYSQL_H

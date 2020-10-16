@@ -19,7 +19,7 @@ int cmd_register() {
     char *hashed_password = compute_MD5(password);
     char query[200];
 
-    sprintf(query, "insert into users (uid, password) value(%u,\"%s\");", id, hashed_password);
+    sprintf(query, "insert into users (uid, password) values(%u,\"%s\");", id, hashed_password);
     if (!execute_cud(query)) return -1;
 
     if (!create_user_table(id)) return -1;
@@ -29,14 +29,13 @@ int cmd_register() {
 }
 
 int cmd_auth() {
-    printf("Auth...\n");
     uid_t uid = getuid();
     char *password = NULL;
     char *hashed_password = NULL;
     password = getpass("Enter you password: ");
     hashed_password = compute_MD5(password);
-    if (!auth(uid, hashed_password)){
-        fprintf(stderr,"Authentication failed.\n");
+    if (!auth(uid, hashed_password)) {
+        fprintf(stderr, "Authentication failed.\n");
         return -1;
     }
     printf("Authentication succeed.\n");
@@ -50,7 +49,13 @@ int cmd_remove() {
         return -1;
     }
     printf("Removing %lu...\n", get_ino(optarg));
-    //TODO: remove
+    uid_t uid = getuid();
+    char query[100];
+    sprintf(query, "delete from `%u` where ino=%lu;", uid, ino);
+    if (!execute_cud(query)) {
+        fprintf(stderr, "Failed to remove file %lu.\n", ino);
+        return -1;
+    }
     return 0;
 }
 
@@ -60,8 +65,13 @@ int cmd_add() {
         fprintf(stderr, "Unknown file: %s\n", optarg);
         return -1;
     }
-    printf("Adding %lu...\n", ino);
-    //TODO: add
+    uid_t uid = getuid();
+    char query[100];
+    sprintf(query, "insert into `%u` (ino) values(%lu);", uid, ino);
+    if (!execute_cud(query)) {
+        fprintf(stderr, "Failed to add file %lu.\n", ino);
+        return -1;
+    }
     return 0;
 }
 

@@ -3,13 +3,69 @@
 #include "utils.h"
 #include "mysql.h"
 
+int cmd_register() {
+    uid_t id = getuid();
+    char uid[10];
+    snprintf(uid, 10, "%u", id);
+    if (has_table(uid)) {
+        fprintf(stderr, "You have been registered!\n");
+        return -1;
+    }
+
+    char *password = NULL;
+    do {
+        password = getpass("Enter you password: ");
+    } while (strlen(password) == 0);
+    char *hashed_password = compute_MD5(password);
+    char query[200];
+
+    sprintf(query, "insert into users (uid, password) value(%u,\"%s\");", id, hashed_password);
+    if (!execute_cud(query)) return -1;
+
+    if (!create_user_table(id)) return -1;
+
+    printf("Successfully registered!\n");
+    return 0;
+}
+
+int cmd_auth() {
+    printf("Auth...\n");
+    //TODO: auth
+    return 0;
+}
+
+int cmd_remove() {
+    ulong ino = get_ino(optarg);
+    if (ino == 0) {
+        fprintf(stderr, "Unknown file: %s\n", optarg);
+        return -1;
+    }
+    printf("Removing %lu...\n", get_ino(optarg));
+    //TODO: remove
+    return 0;
+}
+
+int cmd_add() {
+    ulong ino = get_ino(optarg);
+    if (ino == 0) {
+        fprintf(stderr, "Unknown file: %s\n", optarg);
+        return -1;
+    }
+    printf("Adding %lu...\n", ino);
+    //TODO: add
+    return 0;
+}
+
 int main(int argc, char **argv) {
+    if (connect_to_mysql() == -1) {
+        return -1;
+    }
 
 
     int c;
     struct option long_options[] = {
             {"register", no_argument,       NULL, 'r'},
-            {"auth",     no_argument,       NULL, 'a'},
+            {"cmd_auth", no_argument,       NULL, 'a'},
             {"remove",   required_argument, NULL, 'R'},
             {"add",      required_argument, NULL, 'A'},
     };
@@ -18,56 +74,31 @@ int main(int argc, char **argv) {
         switch (c) {
             case 'r': {
                 //register
-                printf("Registering...\nYour uid is %d.\n", getuid());
-                if (connect_to_mysql() == -1) {
-                    exit(EXIT_FAILURE);
-                }
-                char uid[10];
-                sprintf(uid, "%u", getuid());
-                if (has_table(uid)) {
-                    fprintf(stderr, "You have benn registered!.\n");
-                    exit(EXIT_FAILURE);
-                }
-                create_table(uid);
-                //TODO: register
-                close_connection();
+                cmd_register();
                 break;
             }
             case 'a': {
                 //auth
-                printf("Auth...\n");
-                if (connect_to_mysql() == -1) {
-                    exit(EXIT_FAILURE);
-                }
-                close_connection();
-                //TODO: auth
+                cmd_auth();
                 break;
             }
             case 'R': {
                 //remove
-                ulong ino = get_ino(optarg);
-                if (ino == 0) {
-                    fprintf(stderr, "Unknown file: %s\n", optarg);
-                    exit(EXIT_FAILURE);
-                }
-                printf("Removing %lu...\n", get_ino(optarg));
-                //TODO: remove
+                cmd_remove();
                 break;
             }
             case 'A': {
                 //add
-                ulong ino = get_ino(optarg);
-                if (ino == 0) {
-                    fprintf(stderr, "Unknown file: %s\n", optarg);
-                    exit(EXIT_FAILURE);
-                }
-                printf("Adding %lu...\n", ino);
-                //TODO: add
+                cmd_add();
                 break;
             }
-            default:
+            default: {
+                close_connection();
                 exit(EXIT_FAILURE);
+            }
         }
     }
+
+    close_connection();
     return 0;
 }

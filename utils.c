@@ -6,7 +6,7 @@ unsigned long get_ino(const char *path) {
     return buf.st_ino;
 }
 
-char *compute_MD5(char *text) {
+char *compute_MD5(const char *text) {
     MD5_CTX md5;
     MD5_Init(&md5);
     MD5_Update(&md5, text, strlen(text));

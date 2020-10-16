@@ -12,6 +12,6 @@
 unsigned long get_ino(const char *filepath);
 
 //compute MD5 of text.
-char *compute_MD5(char *text);
+char *compute_MD5(const char *text);
 
 #endif //FILE_VAULT_UTILS_H

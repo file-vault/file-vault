@@ -4,9 +4,10 @@
 #include <mysql/mysql.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
-#define user "test"
+#define user "root"
 #define passwd "123456"
 #define db "filevault"
 
@@ -20,9 +21,12 @@ int connect_to_mysql();
 void close_connection();
 
 //Check if database has this table.
-bool has_table(char *table_name);
+bool has_table(const char *table_name);
 
-//Create table.
-int create_table(char *table_name);
+//Create table for a user, returns true upon success, returns false upon failure.
+bool create_user_table(uid_t uid);
+
+//execute MySQL create/update/delete query, returns true upon success, returns false upon failure.
+bool execute_cud(const char *query);
 
 #endif //FILE_VAULT_MYSQL_H

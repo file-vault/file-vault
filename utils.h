@@ -9,9 +9,12 @@
 #include <string.h>
 
 // Get st_ino of a file, the path argument points to the file. Upon failure, it shall return 0.
-unsigned long get_ino(const char *filepath);
+ino_t get_ino(const char *filepath);
 
-//compute MD5 of text.
+// Compute MD5 of text, must call free() after use.
 char *compute_MD5(const char *text);
+
+// Get the length of an unsigned number.
+unsigned get_unsigned_length(unsigned long num);
 
 #endif //FILE_VAULT_UTILS_H

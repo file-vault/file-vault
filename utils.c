@@ -1,6 +1,6 @@
 #include "utils.h"
 
-unsigned long get_ino(const char *path) {
+ino_t get_ino(const char *path) {
     struct stat buf;
     if (stat(path, &buf) != 0) return 0;
     return buf.st_ino;
@@ -18,4 +18,13 @@ char *compute_MD5(const char *text) {
     }
     result[MD5_DIGEST_LENGTH * 2] = '\0';
     return result;
+}
+
+unsigned get_unsigned_length(unsigned long num) {
+    unsigned length = 0;
+    while (num) {
+        num /= 10;
+        length++;
+    }
+    return length;
 }

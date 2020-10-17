@@ -6,6 +6,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+#include "utils.h"
 
 #define user "root"
 #define passwd "123456"
@@ -20,16 +22,25 @@ int connect_to_mysql();
 //Close connection with MySQL.
 void close_connection();
 
-//Check if database has this table.
-bool has_table(const char *table_name);
+//Check if this user has registered.
+bool has_registered();
 
 //Create table for a user, returns true upon success, returns false upon failure.
-bool create_user_table(uid_t uid);
+bool create_user_table();
 
 //execute MySQL create/update/delete query, returns true upon success, returns false upon failure.
 bool execute_cud(const char *query);
 
-//Authentication.
-bool auth(uid_t uid, const char *hashed_password);
+//Authentication, returns true upon success, returns false upon failure.
+bool auth(const char *hashed_password);
+
+// Insert a new record into table `users`, returns true upon success, returns false upon failure.
+bool create_user(const char *hashed_password);
+
+//Remove a file from file-vault, returns true upon success, returns false upon failure.
+bool remove_file(ino_t ino);
+
+//Add a file into file-vault, returns true upon success, returns false upon failure.
+bool add_file(ino_t ino);
 
 #endif //FILE_VAULT_MYSQL_H

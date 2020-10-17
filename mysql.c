@@ -43,7 +43,7 @@ bool has_registered() {
 
 bool create_user_table() {
     uid_t uid = getuid();
-    const char *format = "create table if not exists `%u` (ino int unsigned not null primary key);";
+    const char *format = "create table if not exists `%u` (ino int unsigned not null primary key, dir bool not null);";
     char *query = (char *) malloc((strlen(format) + get_unsigned_length(uid)) * sizeof(char));
     sprintf(query, format, uid);
 
@@ -94,7 +94,12 @@ bool create_user(const char *hashed_password) {
     return true;
 }
 
-bool remove_file(ino_t ino) {
+bool remove_file(const char *path) {
+    ino_t ino = get_ino(path);
+    if (ino == 0) {
+        fprintf(stderr, "Unknown file: %s\n", optarg);
+        return false;
+    }
     uid_t uid = getuid();
     const char *format = "delete from `%u` where ino=%lu;";
     char *query = (char *) malloc(
@@ -110,12 +115,17 @@ bool remove_file(ino_t ino) {
     return true;
 }
 
-bool add_file(ino_t ino) {
+bool add_file(const char *path) {
+    ino_t ino = get_ino(path);
+    if (ino == 0) {
+        fprintf(stderr, "Unknown file: %s\n", optarg);
+        return false;
+    }
     uid_t uid = getuid();
-    const char *format = "insert into `%u` (ino) values(%lu);";
+    const char *format = "insert into `%u` (ino, dir) values(%lu,%u);";
     char *query = (char *) malloc(
-            (strlen(format) + get_unsigned_length(uid) + get_unsigned_length(ino)) * sizeof(char));
-    sprintf(query, format, uid, ino);
+            (strlen(format) + get_unsigned_length(uid) + get_unsigned_length(ino) + 1) * sizeof(char));
+    sprintf(query, format, uid, ino, is_dir(path));
     if (!execute_cud(query)) {
         free(query);
         fprintf(stderr, "Failed to add file %lu.\n", ino);

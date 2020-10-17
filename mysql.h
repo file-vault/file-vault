@@ -38,9 +38,9 @@ bool auth(const char *hashed_password);
 bool create_user(const char *hashed_password);
 
 //Remove a file from file-vault, returns true upon success, returns false upon failure.
-bool remove_file(ino_t ino);
+bool remove_file(const char *filepath);
 
 //Add a file into file-vault, returns true upon success, returns false upon failure.
-bool add_file(ino_t ino);
+bool add_file(const char *filepath);
 
 #endif //FILE_VAULT_MYSQL_H

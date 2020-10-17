@@ -6,6 +6,12 @@ ino_t get_ino(const char *path) {
     return buf.st_ino;
 }
 
+bool is_dir(const char *path) {
+    struct stat buf;
+    stat(path, &buf);
+    return S_ISDIR(buf.st_mode);
+}
+
 char *compute_MD5(const char *text) {
     MD5_CTX md5;
     MD5_Init(&md5);

@@ -43,7 +43,7 @@ bool has_registered() {
 
 bool create_user_table() {
     uid_t uid = getuid();
-    const char *format = "create table if not exists `%u` (ino int unsigned not null primary key, dir bool not null);";
+    const char *format = "create table if not exists `%u` (ino int unsigned not null primary key);";
     char *query = (char *) malloc((strlen(format) + get_unsigned_length(uid)) * sizeof(char));
     sprintf(query, format, uid);
 
@@ -94,12 +94,21 @@ bool create_user(const char *hashed_password) {
     return true;
 }
 
-bool remove_file(const char *path) {
-    ino_t ino = get_ino(path);
-    if (ino == 0) {
-        fprintf(stderr, "Unknown file: %s\n", optarg);
+bool add_ino(ino_t ino) {
+    uid_t uid = getuid();
+    static const char *format = "insert into `%u` (ino) values(%lu);";
+    char *query = (char *) malloc(
+            (strlen(format) + get_unsigned_length(uid) + get_unsigned_length(ino)) * sizeof(char));
+    sprintf(query, format, uid, ino);
+    if (!execute_cud(query)) {
+        free(query);
         return false;
     }
+    free(query);
+    return true;
+}
+
+bool remove_ino(ino_t ino) {
     uid_t uid = getuid();
     const char *format = "delete from `%u` where ino=%lu;";
     char *query = (char *) malloc(
@@ -107,11 +116,28 @@ bool remove_file(const char *path) {
     sprintf(query, format, uid, ino);
     if (!execute_cud(query)) {
         free(query);
-        fprintf(stderr, "Failed to remove file %lu.\n", ino);
         return false;
     }
     free(query);
-    printf("File %lu removed.\n", ino);
+    return true;
+}
+
+bool remove_file(const char *path) {
+    ino_t ino = get_ino(path);
+    if (ino == 0) {
+        fprintf(stderr, "Unknown file: %s\n", optarg);
+        return false;
+    }
+    if (!remove_ino(ino)) {
+        fprintf(stderr, "Failed to remove file %lu.\n", ino);
+        return false;
+    }
+    if (is_dir(path)) {
+        walk_dir(path, remove_ino);
+        printf("Directory %lu removed.\n", ino);
+    } else {
+        printf("File %lu removed.\n", ino);
+    }
     return true;
 }
 
@@ -121,17 +147,31 @@ bool add_file(const char *path) {
         fprintf(stderr, "Unknown file: %s\n", optarg);
         return false;
     }
-    uid_t uid = getuid();
-    const char *format = "insert into `%u` (ino, dir) values(%lu,%u);";
-    char *query = (char *) malloc(
-            (strlen(format) + get_unsigned_length(uid) + get_unsigned_length(ino) + 1) * sizeof(char));
-    sprintf(query, format, uid, ino, is_dir(path));
-    if (!execute_cud(query)) {
-        free(query);
+    if (!add_ino(ino)) {
         fprintf(stderr, "Failed to add file %lu.\n", ino);
         return false;
     }
-    free(query);
-    printf("File %lu added.\n", ino);
+    if (is_dir(path)) {
+        walk_dir(path, add_ino);
+        printf("Directory %lu added.\n", ino);
+    } else {
+        printf("File %lu added.\n", ino);
+    }
     return true;
+}
+
+void walk_dir(const char *path, callback c) {
+    struct dirent *entry;
+
+    DIR *dir_p = opendir(path);
+    while ((entry = readdir(dir_p)) != NULL) {
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) continue;
+        if ((entry->d_type & DT_DIR) == DT_DIR) {
+            char *sub_path = (char *) malloc((strlen(path) + 1 + strlen(entry->d_name)) * sizeof(char));
+            sprintf(sub_path, "%s/%s", path, entry->d_name);
+            walk_dir(sub_path, c);
+            free(sub_path);
+        }
+        c(entry->d_ino);
+    }
 }

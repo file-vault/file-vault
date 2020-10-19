@@ -10,7 +10,6 @@ int connect_to_mysql() {
 
     if (!mysql_real_connect(mysql, NULL, user, passwd, db, 3306, NULL, 0)) {
         fprintf(stderr, "Failed to connect to database: Error: %s\n", mysql_error(mysql));
-        close_connection();
         return -1;
     }
     return 0;
@@ -47,7 +46,7 @@ bool create_user_table() {
     char *query = (char *) malloc((strlen(format) + get_unsigned_length(uid)) * sizeof(char));
     sprintf(query, format, uid);
 
-    if (!mysql_query(mysql, query)) {
+    if (execute_cud(query)) {
         free(query);
         return true;
     }
@@ -174,4 +173,32 @@ void walk_dir(const char *path, callback c) {
         }
         c(entry->d_ino);
     }
+}
+
+bool delete_user() {
+    uid_t uid = getuid();
+    const char *format = "delete from users where uid=%u;";
+    char *query = (char *) malloc((strlen(format) + get_unsigned_length(uid)) * sizeof(char));
+    sprintf(query, format, uid);
+    if (!execute_cud(query)) {
+        free(query);
+        return false;
+    }
+    free(query);
+    return true;
+}
+
+bool drop_user_table() {
+    uid_t uid = getuid();
+    const char *format = "drop table `%u`;";
+    char *query = (char *) malloc((strlen(format) + get_unsigned_length(uid)) * sizeof(char));
+    sprintf(query, format, uid);
+
+    if (execute_cud(query)) {
+        free(query);
+        return true;
+    }
+    fprintf(stderr, "Failed to drop table %u: %s\n", uid, mysql_error(mysql));
+    free(query);
+    return false;
 }

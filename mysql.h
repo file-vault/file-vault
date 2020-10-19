@@ -29,17 +29,23 @@ void close_connection();
 //Check if this user has registered.
 bool has_registered();
 
+// Insert a new record into table `users`, returns true upon success, returns false upon failure.
+bool create_user(const char *hashed_password);
+
 //Create table for a user, returns true upon success, returns false upon failure.
 bool create_user_table();
+
+// delete current user from table `users`, returns true upon success, returns false upon failure.
+bool delete_user();
+
+//drop current user's table, returns true upon success, returns false upon failure.
+bool drop_user_table();
 
 //execute MySQL create/update/delete query, returns true upon success, returns false upon failure.
 bool execute_cud(const char *query);
 
 //Authentication, returns true upon success, returns false upon failure.
 bool auth(const char *hashed_password);
-
-// Insert a new record into table `users`, returns true upon success, returns false upon failure.
-bool create_user(const char *hashed_password);
 
 // Add a file with the given ino_t into file-vault, returns true upon success, returns false upon failure.
 bool add_ino(ino_t ino);

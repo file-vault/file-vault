@@ -82,6 +82,7 @@ asmlinkage long hacked_openat(struct pt_regs *regs)
     long ret=-1;
     char buffer[PATH_MAX];
     char check_msg[30];
+	char log[PATH_MAX + 25];
     char tmp[6];
     long nbytes;
     uid_t uid;
@@ -99,6 +100,12 @@ asmlinkage long hacked_openat(struct pt_regs *regs)
         down(&sem);
         if (check_result)
             ret = orig_openat(regs);
+		else {   //操作失败时向用户层发送审计信息，包括文件路径、uid、访问方式
+			strncpy(log, buffer);
+			strcat(log, ":open:");
+			strcat(log, uid);
+			send_usrmsg(log, sizeof(log));
+		}
         printk("%d\n",check_result);
         check_result=0;
         // protect file can only be put into /home directory
@@ -112,6 +119,7 @@ asmlinkage ssize_t hacked_read(struct pt_regs* regs) {
     long ret=-1;
     char buffer[PATH_MAX];
     char check_msg[30];
+	char log[PATH_MAX + 25];
     char tmp[6];
     long nbytes;
     uid_t uid;
@@ -129,6 +137,12 @@ asmlinkage ssize_t hacked_read(struct pt_regs* regs) {
         down(&sem);
         if (check_result)
             ret = orig_read(regs);
+		else {   //操作失败时向用户层发送审计信息，包括文件路径、uid、访问方式
+			strncpy(log, buffer);
+			strcat(log, ":read:");
+			strcat(log, uid);
+			send_usrmsg(log, sizeof(log));
+		}
         printk("%d\n",check_result);
         check_result=0;
         // protect file can only be put into /home directory
@@ -142,6 +156,7 @@ asmlinkage ssize_t hacked_write(struct pt_regs* regs) {
     long ret=-1;
     char buffer[PATH_MAX];
     char check_msg[30];
+	char log[PATH_MAX + 25];
     char tmp[6];
     long nbytes;
     uid_t uid;
@@ -159,6 +174,12 @@ asmlinkage ssize_t hacked_write(struct pt_regs* regs) {
         down(&sem);
         if (check_result)
             ret = orig_write(regs);
+		else {   //操作失败时向用户层发送审计信息，包括文件路径、uid、访问方式
+			strncpy(log, buffer);
+			strcat(log, ":write:");
+			strcat(log, uid);
+			send_usrmsg(log, sizeof(log));
+		}
         printk("%d\n",check_result);
         check_result=0;
         // protect file can only be put into /home directory

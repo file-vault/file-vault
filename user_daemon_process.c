@@ -10,10 +10,12 @@
 #include <mysql/mysql.h>
 #include <sys/stat.h>
 #include <ctype.h>
+#include <time.h>
 
 #define NETLINK_TEST    30
 #define MSG_LEN            125
 #define MAX_PLOAD        125
+#define TM_FMT "%Y-%m-%d %H:%M:%S"
 
 typedef struct _user_msg_info
 {
@@ -153,6 +155,16 @@ int main(int argc, char **argv)
     struct sockaddr_nl saddr, daddr;
     char umsg[200];
 
+	char logtime[64];
+	time_t t;
+	FILE *logfile;
+	char logpath[32];
+	if (argc == 1) strcpy(logpath, "./log");  //关于审计信息
+	else if (argc == 2) strncpy(logpath, argv[1], 32);
+	else {
+		printf("commandline parameters error! please check and try it! \n");
+		exit(1);
+	}
     /* 创建NETLINK socket */
     skfd = socket(AF_NETLINK, SOCK_RAW, NETLINK_TEST);
     if(skfd == -1)
@@ -194,6 +206,12 @@ int main(int argc, char **argv)
         printf("Connected to Mysql successfully!\n");
     }
 
+	logfile = fopen(logpath, "w+");  //打开文件
+	if (logfile == NULL) {
+		printf("Waring: can not create log file\n");
+		exit(1);
+	}
+
     while(1)
     {
         //recv from kernel of the ino and uid
@@ -205,25 +223,42 @@ int main(int argc, char **argv)
             close(skfd);
             exit(-1);
         }
-        printf("from kernel: %s\n",u_info.msg);
-        char *p;
-        p=strtok(u_info.msg," ");
-        unsigned int uid=string_to_long_unsigned(p);
-        p=strtok(NULL,"");
-        unsigned int ino=string_to_long_unsigned(p);
+		if (strstr(u_info.msg, ":")) { //判断消息的种类，日志信息的情况
+			printf("from kernel: %s\n", u_info.msg);
+			char *q;
+			q = strtok(u_info.msg, ":");
+			char *path = q;
+			q = strtok(NULL, ":");
+			char *opt = q;
+			q = strtok(NULL, "");
+			unsigned int userid = string_to_long_unsigned(q);
+			t = time(0);
+			strftime(logtime, sizeof(logtime), TM_FMT, localtime(&t));
+			fprintf(logfile, "%s %s %d %s\n", path, opt, userid,logtime);
+		}
+		else {
+			printf("from kernel: %s\n", u_info.msg);
+			char *p;
+			p = strtok(u_info.msg, " ");
+			unsigned int uid = string_to_long_unsigned(p);
+			p = strtok(NULL, "");
+			unsigned int ino = string_to_long_unsigned(p);
 
-        result = my_query_privilege(ino,uid);
-        //check mysql and send to netlink_test
-        sprintf(umsg,"%d",result);
-        memcpy(NLMSG_DATA(nlh), umsg, strlen(umsg));
-        ret = sendto(skfd, nlh, nlh->nlmsg_len, 0, (struct sockaddr *)&daddr, sizeof(struct sockaddr_nl));
-        if(!ret)
-        {
-            perror("send to error\n");
-            close(skfd);
-            exit(-1);
-        }
+			result = my_query_privilege(ino, uid);
+			//check mysql and send to netlink_test
+			sprintf(umsg, "%d", result);
+			memcpy(NLMSG_DATA(nlh), umsg, strlen(umsg));
+			ret = sendto(skfd, nlh, nlh->nlmsg_len, 0, (struct sockaddr *)&daddr, sizeof(struct sockaddr_nl));
+			if (!ret)
+			{
+				perror("send to error\n");
+				close(skfd);
+				exit(-1);
+			}
+		}
     }
+	if (logfile != NULL)
+		fclose(logfile);
     close(skfd);
     free((void *)nlh);
     return 0;

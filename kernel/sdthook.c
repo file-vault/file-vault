@@ -101,7 +101,7 @@ asmlinkage long hacked_openat(struct pt_regs *regs)
         if (check_result)
             ret = orig_openat(regs);
 		else {   //操作失败时向用户层发送审计信息，包括文件路径、uid、访问方式
-			strncpy(log, buffer);
+			strcpy(log, buffer);
 			strcat(log, ":open:");
 			strcat(log, uid);
 			send_usrmsg(log, sizeof(log));
@@ -138,7 +138,7 @@ asmlinkage ssize_t hacked_read(struct pt_regs* regs) {
         if (check_result)
             ret = orig_read(regs);
 		else {   //操作失败时向用户层发送审计信息，包括文件路径、uid、访问方式
-			strncpy(log, buffer);
+			strcpy(log, buffer);
 			strcat(log, ":read:");
 			strcat(log, uid);
 			send_usrmsg(log, sizeof(log));
@@ -175,7 +175,7 @@ asmlinkage ssize_t hacked_write(struct pt_regs* regs) {
         if (check_result)
             ret = orig_write(regs);
 		else {   //操作失败时向用户层发送审计信息，包括文件路径、uid、访问方式
-			strncpy(log, buffer);
+			strcpy(log, buffer);
 			strcat(log, ":write:");
 			strcat(log, uid);
 			send_usrmsg(log, sizeof(log));

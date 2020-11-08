@@ -1,0 +1,3 @@
+/home/zkx/lab/file-vault/cli/CMakeFiles/rebuild_cache.dir
+/home/zkx/lab/file-vault/cli/CMakeFiles/vault-cli.dir
+/home/zkx/lab/file-vault/cli/CMakeFiles/edit_cache.dir

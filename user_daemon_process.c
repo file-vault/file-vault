@@ -53,6 +53,7 @@ int my_query_privilege(unsigned long ino,uid_t uid){
     // 3) else check_res=1
     char query[100];
     sprintf(query,"select * from t%d",uid);
+    printf("query:%s\n",query);
     MYSQL_RES *res,*res2;
     MYSQL_ROW row,row2;
     int flag;
@@ -61,7 +62,7 @@ int my_query_privilege(unsigned long ino,uid_t uid){
         printf("Query failed!\n");
         return -1;
     }else {
-        printf("[%s]\n", query);
+        //printf("[%s]\n", query);
     }
     int flag2;
     flag2=0;
@@ -70,9 +71,10 @@ int my_query_privilege(unsigned long ino,uid_t uid){
     /*mysql_fetch_row检索结果集的下一行*/
     while(row = mysql_fetch_row(res)) {
         /*mysql_num_fields返回结果集中的字段数目*/
-        printf("this a res %s\n",row[1]);
+        //printf("this a res %s\n",row[1]);
         if (string_to_long_unsigned(row[1])==ino)
         {
+            printf("this a res %u\n",string_to_long_unsigned(row[1]));
             printf("in it\n");
             flag2=1;
             break;
@@ -115,8 +117,9 @@ int my_query_privilege(unsigned long ino,uid_t uid){
             }
             res2 = mysql_store_result(&mysql);
             while(row2 = mysql_fetch_row(res2)) {
-                printf("this a res %s\n",row2[1]);
+                //printf("this a res %s\n",row2[1]);
                 if (string_to_long_unsigned(row2[1])==ino){
+                        printf("this a res %u\n",string_to_long_unsigned(row2[1]));
                         printf("in other's\n");
                         flag3=1;
                         break;
@@ -199,7 +202,7 @@ int main(int argc, char **argv)
     nlh->nlmsg_pid = saddr.nl_pid; //self port
 
     mysql_init(&mysql);
-    if(!mysql_real_connect(&mysql, "localhost", "root", "123456", "test", 0, NULL, 0)) {
+    if(!mysql_real_connect(&mysql, "localhost", "root", "123456", "filevault", 0, NULL, 0)) {
         printf("Failed to connect to Mysql!\n");
         return -1;
     }else {

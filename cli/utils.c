@@ -3,6 +3,7 @@
 ino_t get_ino(const char *path) {
     struct stat buf;
     if (stat(path, &buf) != 0) return 0;
+    if (buf.st_uid != getuid()) return -1;
     return buf.st_ino;
 }
 

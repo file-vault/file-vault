@@ -146,6 +146,10 @@ bool add_file(const char *path) {
         fprintf(stderr, "Unknown file: %s\n", optarg);
         return false;
     }
+    if (ino==-1){
+        fprintf(stderr, "You are not the owner of the file: %s\n", optarg);
+        return false;
+    }
     if (!add_ino(ino)) {
         fprintf(stderr, "Failed to add file %lu.\n", ino);
         return false;

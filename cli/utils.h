@@ -8,8 +8,9 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
+#include <sys/unistd.h>
 
-// Get st_ino of a file, the path argument points to the file. Upon failure, it shall return 0.
+// Get st_ino of a file, the path argument points to the file. If the file is not found, it returns 0, if the owner of the file is not current user, it returns -1.
 ino_t get_ino(const char *filepath);
 
 // Check if the file is a directory.

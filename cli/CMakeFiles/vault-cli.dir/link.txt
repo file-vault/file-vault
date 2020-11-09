@@ -1,1 +1,0 @@
-/usr/bin/cc CMakeFiles/vault-cli.dir/vault-cli.c.o CMakeFiles/vault-cli.dir/utils.c.o CMakeFiles/vault-cli.dir/mysql.c.o -o vault-cli  -lmysqlclient -lcrypto 

@@ -11,6 +11,7 @@ I have no idea which step is wrong... or how to debug.
 - mysql  -uroot -p123456
 - sudo apt-get install openssl-devel (this is for openssl.h)
 - sudo apt-get install libmysql++-dev (this is for mysql.h)
+- sudo apt install e2fslibs-dev
 - sudo snap install cmake --classic
 
 
@@ -36,8 +37,7 @@ I have no idea which step is wrong... or how to debug.
 - ./cli
 
   ```shell
-  sudo cmake ./
-  sudo make
+  ./build.sh
   # this is for users registration
   user1$ ./vault-cli -a /home/user1/TestAudit
   user2$ ./vault-cli -a /home/user2/TestAudit

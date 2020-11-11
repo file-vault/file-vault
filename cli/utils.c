@@ -62,9 +62,9 @@ bool print_filenames(ext2_ino_t inodes[], int length) {
     ws.inodes = inodes;
     ws.inodes_num = length;
     ws.left_num = length;
-    err = ext2fs_open("/dev/sda2", 0, 0, 0, unix_io_manager, &fs);
+    err = ext2fs_open("/dev/sda1", 0, 0, 0, unix_io_manager, &fs);
     if (err) {
-        com_err("print_filenames", err, "while open /dev/sda2");
+        com_err("print_filenames", err, "while open /dev/sda1");
         return false;
     }
     struct ext2_inode inode;

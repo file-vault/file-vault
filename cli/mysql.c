@@ -146,7 +146,7 @@ bool add_file(const char *path) {
         fprintf(stderr, "Unknown file: %s\n", optarg);
         return false;
     }
-    if (ino==-1){
+    if (ino == -1) {
         fprintf(stderr, "You are not the owner of the file: %s\n", optarg);
         return false;
     }
@@ -205,4 +205,26 @@ bool drop_user_table() {
     fprintf(stderr, "Failed to drop table t%u: %s\n", uid, mysql_error(mysql));
     free(query);
     return false;
+}
+
+int fetch_inodes(ext2_ino_t *files[]) {
+    uid_t uid = getuid();
+    const char *format = "select ino from `t%u`;";
+    char *query = (char *) malloc((strlen(format) + get_unsigned_length(uid)) * sizeof(char));
+    sprintf(query, format, uid);
+    if (mysql_query(mysql, query)) {
+        fprintf(stderr, "Query \"%s\" failed: %s\n", query, mysql_error(mysql));
+        return 0;
+    }
+    MYSQL_RES *res = mysql_store_result(mysql);
+    int rows = mysql_num_rows(res);
+    *files = (ext2_ino_t *) malloc(rows * sizeof(ext2_ino_t));
+    MYSQL_ROW row;
+    int i = 0;
+    while ((row = mysql_fetch_row(res))) {
+        (*files)[i] = (ext2_ino_t) strtol(row[0], NULL, 10);
+        i++;
+    }
+    mysql_free_result(res);
+    return rows;
 }

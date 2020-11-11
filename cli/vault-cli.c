@@ -71,6 +71,14 @@ int stop_vault() {
     return 0;
 }
 
+int list() {
+    ext2_ino_t *files = NULL;
+    int len = fetch_inodes(&files);
+    print_filenames(files, len);
+    free(files);
+    return 0;
+}
+
 int main(int argc, char **argv) {
     atexit(close_connection); // Close MySQL connection before exit.
 
@@ -92,9 +100,10 @@ int main(int argc, char **argv) {
 //            {"enable",   no_argument,       NULL, 'e'},
 //            {"disable",  no_argument,       NULL, 'd'},
             {"stop",     no_argument,       NULL, 's'},
+            {"list",     no_argument,       NULL, 'l'},
     };
 
-    while ((c = getopt_long(argc, argv, "deisa:r:", long_options, NULL)) != -1) {
+    while ((c = getopt_long(argc, argv, "deilsa:r:", long_options, NULL)) != -1) {
         switch (c) {
             case 'r': {
                 //remove file or directory
@@ -112,6 +121,10 @@ int main(int argc, char **argv) {
             }
             case 's': {
                 stop_vault();
+                break;
+            }
+            case 'l': {
+                list();
                 break;
             }
             default: {

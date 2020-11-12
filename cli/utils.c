@@ -40,15 +40,25 @@ int iter_callback(struct ext2_dir_entry *dirent, int offset EXT2FS_ATTR((unused)
                   char *buf EXT2FS_ATTR((unused)), void *private) {
     struct walk_struct *ws = (struct walk_struct *) private;
     struct ext2_inode inode;
-    errcode_t err;
     if (strcmp(".", dirent->name) == 0 || strcmp("..", dirent->name) == 0)
         return 0;
     for (int i = 0; i < ws->inodes_num; i++) {
         if (ws->inodes[i] == dirent->inode) {
             ws->left_num--;
-            printf("%u\t%.*s\n", ws->inodes[i],
-                   ext2fs_dirent_name_len(dirent),
-                   dirent->name);
+            if (!ws->parent_name) {
+                ext2fs_get_pathname(fs, ws->dir, 0, &ws->parent_name);
+            }
+            ext2fs_read_inode(fs, dirent->inode, &inode);
+            if (!LINUX_S_ISDIR(inode.i_mode))
+                printf("%u\t%s/%.*s\n", ws->inodes[i],
+                       ws->parent_name,
+                       ext2fs_dirent_name_len(dirent),
+                       dirent->name);
+            else
+                printf("%u\t\033[1;34m%s/%.*s\033[0m\n", ws->inodes[i],
+                       ws->parent_name,
+                       ext2fs_dirent_name_len(dirent),
+                       dirent->name);
         }
     }
     return 0;
@@ -57,16 +67,13 @@ int iter_callback(struct ext2_dir_entry *dirent, int offset EXT2FS_ATTR((unused)
 bool print_filenames(ext2_ino_t inodes[], int length) {
     if (!length) return false;
     errcode_t err;
-    ext2_filsys fs;
     struct walk_struct ws;
     ws.inodes = inodes;
     ws.inodes_num = length;
     ws.left_num = length;
     err = ext2fs_open("/dev/sda1", 0, 0, 0, unix_io_manager, &fs);
-    if (err) {
-        com_err("print_filenames", err, "while open /dev/sda1");
-        return false;
-    }
+    if (err) return false;
+    printf("\n\033[1mInode\tPathname\033[0m\n");
     struct ext2_inode inode;
     ext2_ino_t ino;
     ext2_inode_scan scan = 0;
@@ -78,9 +85,9 @@ bool print_filenames(ext2_ino_t inodes[], int length) {
             goto next;
         }
         ws.dir = ino;
-        ws.name = NULL;
+        ws.parent_name = NULL;
         ext2fs_dir_iterate(fs, ino, 0, NULL, iter_callback, (void *) &ws);
-        ext2fs_free_mem(&ws.name);
+        ext2fs_free_mem(&ws.parent_name);
         if (!ws.left_num)break;
         next:
         do { err = ext2fs_get_next_inode(scan, &ino, &inode); }

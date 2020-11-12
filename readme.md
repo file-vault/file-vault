@@ -41,6 +41,7 @@ I have no idea which step is wrong... or how to debug.
   # this is for users registration
   user1$ ./vault-cli -a /home/user1/TestAudit
   user2$ ./vault-cli -a /home/user2/TestAudit
+  ./vault-cli -l
   # now tables t1000 and t1001 has been built, with inode items added
   ```
 

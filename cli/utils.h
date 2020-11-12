@@ -20,8 +20,10 @@ struct walk_struct {
     ext2_ino_t *inodes;
     int inodes_num;
     int left_num;
-    char *name;
+    char *parent_name;
 };
+
+static ext2_filsys fs;
 
 // Get st_ino of a file, the path argument points to the file. If the file is not found, it returns 0, if the owner of the file is not current user, it returns -1.
 ino_t get_ino(const char *filepath);

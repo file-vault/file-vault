@@ -5,5 +5,5 @@ set(CMAKE_C_STANDARD 11)
 
 link_libraries(mysqlclient)
 link_libraries(crypto)
-
+link_libraries(ext2fs)
 add_executable(vault-cli vault-cli.c utils.c utils.h mysql.c mysql.h)

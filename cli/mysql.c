@@ -24,7 +24,7 @@ bool has_registered() {
     uid_t uid = getuid();
     unsigned length = get_unsigned_length(uid);
     char *table = (char *) malloc((length + 1) * sizeof(char));
-    sprintf(table, "%u", uid);
+    sprintf(table, "t%u", uid);
     MYSQL_RES *result = mysql_list_tables(mysql, NULL);
     if (result) {
         MYSQL_ROW row = mysql_fetch_row(result);
@@ -42,7 +42,7 @@ bool has_registered() {
 
 bool create_user_table() {
     uid_t uid = getuid();
-    const char *format = "create table if not exists `%u` (ino int unsigned not null primary key);";
+    const char *format = "create table if not exists `t%u` (id int not null AUTO_INCREMENT,ino int unsigned not null,primary key(id) );";
     char *query = (char *) malloc((strlen(format) + get_unsigned_length(uid)) * sizeof(char));
     sprintf(query, format, uid);
 
@@ -50,7 +50,7 @@ bool create_user_table() {
         free(query);
         return true;
     }
-    fprintf(stderr, "Failed to create table %u: %s\n", uid, mysql_error(mysql));
+    fprintf(stderr, "Failed to create table t%u: %s\n", uid, mysql_error(mysql));
     free(query);
     return false;
 }
@@ -95,7 +95,7 @@ bool create_user(const char *hashed_password) {
 
 bool add_ino(ino_t ino) {
     uid_t uid = getuid();
-    static const char *format = "insert into `%u` (ino) values(%lu);";
+    static const char *format = "insert into `t%u` (ino) values(%lu);";
     char *query = (char *) malloc(
             (strlen(format) + get_unsigned_length(uid) + get_unsigned_length(ino)) * sizeof(char));
     sprintf(query, format, uid, ino);
@@ -109,7 +109,7 @@ bool add_ino(ino_t ino) {
 
 bool remove_ino(ino_t ino) {
     uid_t uid = getuid();
-    const char *format = "delete from `%u` where ino=%lu;";
+    const char *format = "delete from `t%u` where ino=%lu;";
     char *query = (char *) malloc(
             (strlen(format) + get_unsigned_length(uid) + get_unsigned_length(ino)) * sizeof(char));
     sprintf(query, format, uid, ino);
@@ -144,6 +144,10 @@ bool add_file(const char *path) {
     ino_t ino = get_ino(path);
     if (ino == 0) {
         fprintf(stderr, "Unknown file: %s\n", optarg);
+        return false;
+    }
+    if (ino == -1) {
+        fprintf(stderr, "You are not the owner of the file: %s\n", optarg);
         return false;
     }
     if (!add_ino(ino)) {
@@ -190,7 +194,7 @@ bool delete_user() {
 
 bool drop_user_table() {
     uid_t uid = getuid();
-    const char *format = "drop table `%u`;";
+    const char *format = "drop table `t%u`;";
     char *query = (char *) malloc((strlen(format) + get_unsigned_length(uid)) * sizeof(char));
     sprintf(query, format, uid);
 
@@ -198,7 +202,29 @@ bool drop_user_table() {
         free(query);
         return true;
     }
-    fprintf(stderr, "Failed to drop table %u: %s\n", uid, mysql_error(mysql));
+    fprintf(stderr, "Failed to drop table t%u: %s\n", uid, mysql_error(mysql));
     free(query);
     return false;
+}
+
+int fetch_inodes(ext2_ino_t *files[]) {
+    uid_t uid = getuid();
+    const char *format = "select ino from `t%u`;";
+    char *query = (char *) malloc((strlen(format) + get_unsigned_length(uid)) * sizeof(char));
+    sprintf(query, format, uid);
+    if (mysql_query(mysql, query)) {
+        fprintf(stderr, "Query \"%s\" failed: %s\n", query, mysql_error(mysql));
+        return 0;
+    }
+    MYSQL_RES *res = mysql_store_result(mysql);
+    int rows = mysql_num_rows(res);
+    *files = (ext2_ino_t *) malloc(rows * sizeof(ext2_ino_t));
+    MYSQL_ROW row;
+    int i = 0;
+    while ((row = mysql_fetch_row(res))) {
+        (*files)[i] = (ext2_ino_t) strtol(row[0], NULL, 10);
+        i++;
+    }
+    mysql_free_result(res);
+    return rows;
 }

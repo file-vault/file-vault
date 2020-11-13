@@ -62,4 +62,9 @@ bool add_file(const char *filepath);
 // Add(remove) all files in the given directory into(from) file-vault recursively.
 void walk_dir(const char *path, callback);
 
+// fetch inode number of all files in the file vault.
+int fetch_inodes(ext2_ino_t **);
+
+int iter_callback(struct ext2_dir_entry*,int,int,char *,void *);
+
 #endif //FILE_VAULT_MYSQL_H

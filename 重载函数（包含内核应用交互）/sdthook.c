@@ -39,10 +39,12 @@ sys_call_ptr_t * sys_call_table = NULL;
 
 struct semaphore sem;
 int check_result;
+int daemon_flag=0;
 
 int test_netlink_init(void);
 void test_netlink_exit(void);
 int send_usrmsg(char *pbuf, uint16_t len);
+int check_privilege(char *pbuf, uint16_t len);
 
 static unsigned long get_ino_from_fd(unsigned int fd) {
     // 通过文件描述符获得文件控制块
@@ -82,107 +84,55 @@ asmlinkage long hacked_openat(struct pt_regs *regs)
     long ret=-1;
     char buffer[PATH_MAX];
     char check_msg[30];
-	char log[PATH_MAX + 25];
-    char tmp[6];
-    long nbytes;
     uid_t uid;
     unsigned long ino;
-    nbytes=strncpy_from_user(buffer,(char*)regs->bx,PATH_MAX);
-    strncpy(tmp,buffer,5);
-    tmp[5]='\0';
-    if (strcmp(tmp,"/home")==0)
+    if (daemon_flag)
     {
         ino = get_ino_from_name(regs->di, (char*)regs->si);
         uid = current_uid().val;
-        printk("%s %u %lu",buffer,uid,ino);
         sprintf(check_msg,"%u %lu",uid,ino);
-        send_usrmsg(check_msg,sizeof(check_msg));
-        down(&sem);
-        if (check_result)
+        if (uid==0 || ino==0 || check_privilege(check_msg,sizeof(check_msg)))
             ret = orig_openat(regs);
-		else {   //操作失败时向用户层发送审计信息，包括文件路径、uid、访问方式
-			strncpy(log, buffer);
-			strcat(log, ":open:");
-			strcat(log, uid);
-			send_usrmsg(log, sizeof(log));
-		}
-        printk("%d\n",check_result);
-        check_result=0;
-        // protect file can only be put into /home directory
     }
     else
         ret = orig_openat(regs);
     return ret;
 }
 
-asmlinkage ssize_t hacked_read(struct pt_regs* regs) {
+asmlinkage long hacked_read(struct pt_regs *regs)
+{
     long ret=-1;
     char buffer[PATH_MAX];
     char check_msg[30];
-	char log[PATH_MAX + 25];
-    char tmp[6];
-    long nbytes;
     uid_t uid;
     unsigned long ino;
-    nbytes=strncpy_from_user(buffer,(char*)regs->bx,PATH_MAX);
-    strncpy(tmp,buffer,5);
-    tmp[5]='\0';
-    if (strcmp(tmp,"/home")==0)
+    if (daemon_flag)
     {
-        ino = get_ino_from_name(regs->di, (char*)regs->si);
+        ino = get_ino_from_fd(regs->di);
         uid = current_uid().val;
-        printk("%s %u %lu",buffer,uid,ino);
         sprintf(check_msg,"%u %lu",uid,ino);
-        send_usrmsg(check_msg,sizeof(check_msg));
-        down(&sem);
-        if (check_result)
+        if (uid==0 || ino==0 || check_privilege(check_msg,sizeof(check_msg)))
             ret = orig_read(regs);
-		else {   //操作失败时向用户层发送审计信息，包括文件路径、uid、访问方式
-			strncpy(log, buffer);
-			strcat(log, ":read:");
-			strcat(log, uid);
-			send_usrmsg(log, sizeof(log));
-		}
-        printk("%d\n",check_result);
-        check_result=0;
-        // protect file can only be put into /home directory
     }
     else
         ret = orig_read(regs);
     return ret;
 }
 
-asmlinkage ssize_t hacked_write(struct pt_regs* regs) {
+asmlinkage long hacked_write(struct pt_regs *regs)
+{
     long ret=-1;
     char buffer[PATH_MAX];
     char check_msg[30];
-	char log[PATH_MAX + 25];
-    char tmp[6];
-    long nbytes;
     uid_t uid;
     unsigned long ino;
-    nbytes=strncpy_from_user(buffer,(char*)regs->bx,PATH_MAX);
-    strncpy(tmp,buffer,5);
-    tmp[5]='\0';
-    if (strcmp(tmp,"/home")==0)
+    if (daemon_flag)
     {
-        ino = get_ino_from_name(regs->di, (char*)regs->si);
+        ino = get_ino_from_fd(regs->di);
         uid = current_uid().val;
-        printk("%s %u %lu",buffer,uid,ino);
         sprintf(check_msg,"%u %lu",uid,ino);
-        send_usrmsg(check_msg,sizeof(check_msg));
-        down(&sem);
-        if (check_result)
+        if (uid==0 || ino==0 || check_privilege(check_msg,sizeof(check_msg)))
             ret = orig_write(regs);
-		else {   //操作失败时向用户层发送审计信息，包括文件路径、uid、访问方式
-			strncpy(log, buffer);
-			strcat(log, ":write:");
-			strcat(log, uid);
-			send_usrmsg(log, sizeof(log));
-		}
-        printk("%d\n",check_result);
-        check_result=0;
-        // protect file can only be put into /home directory
     }
     else
         ret = orig_write(regs);
@@ -201,7 +151,6 @@ static int __init audit_init(void)
     printk("Info:  orginal read:%lx\n",(long)orig_read);
     orig_write = (old_syscall_t)sys_call_table[__NR_write];
     printk("Info:  orginal read:%lx\n",(long)orig_read);
-
 
     pte = lookup_address((unsigned long) sys_call_table, &level);
     // Change PTE to allow writing

@@ -13,4 +13,4 @@ test:
 	sudo insmod AuditModule.ko
 	dmesg | tail -n 10
 show:
-	dmesg | tail -n 10
+	dmesg | tail -n 50

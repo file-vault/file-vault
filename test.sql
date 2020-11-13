@@ -16,52 +16,19 @@
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
 --
--- Table structure for table `t1000`
+-- Table structure for table `info`
 --
 
-DROP TABLE IF EXISTS `t1000`;
+DROP TABLE IF EXISTS `info`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `t1000` (
+CREATE TABLE `info` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
-  `inode` int(30) DEFAULT NULL,
+  `ino` int(30) DEFAULT NULL,
+  `uid` int(11) DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=latin1;
 /*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `t1000`
---
-
-LOCK TABLES `t1000` WRITE;
-/*!40000 ALTER TABLE `t1000` DISABLE KEYS */;
-INSERT INTO `t1000` VALUES (2,409547);
-/*!40000 ALTER TABLE `t1000` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table `t2000`
---
-
-DROP TABLE IF EXISTS `t2000`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `t2000` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `inode` int(30) NOT NULL,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `t2000`
---
-
-LOCK TABLES `t2000` WRITE;
-/*!40000 ALTER TABLE `t2000` DISABLE KEYS */;
-INSERT INTO `t2000` VALUES (1,400924),(2,550812);
-/*!40000 ALTER TABLE `t2000` ENABLE KEYS */;
-UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
@@ -72,4 +39,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2020-10-30  1:54:50
+-- Dump completed on 2020-11-12 22:17:37

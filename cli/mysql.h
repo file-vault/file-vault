@@ -32,14 +32,11 @@ bool has_registered();
 // Insert a new record into table `users`, returns true upon success, returns false upon failure.
 bool create_user(const char *hashed_password);
 
-//Create table for a user, returns true upon success, returns false upon failure.
-bool create_user_table();
-
 // delete current user from table `users`, returns true upon success, returns false upon failure.
 bool delete_user();
 
-//drop current user's table, returns true upon success, returns false upon failure.
-bool drop_user_table();
+// delete all data of current user(delete from info where uid=xxxx).
+bool delete_user_data();
 
 //execute MySQL create/update/delete query, returns true upon success, returns false upon failure.
 bool execute_cud(const char *query);

@@ -94,5 +94,6 @@ bool print_filenames(ext2_ino_t inodes[], int length) {
         while (err == EXT2_ET_BAD_BLOCK_IN_INODE_TABLE);
     }
     ext2fs_close_inode_scan(scan);
+    ext2fs_close(fs);
     return true;
 }

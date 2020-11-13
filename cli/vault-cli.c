@@ -13,8 +13,6 @@ int register_user() {
 
     if (!create_user(hashed_password)) return -1;
 
-    if (!create_user_table()) return -1;
-
     printf("\033[32mSuccessfully registered!\033[0m\n");
     return 0;
 }
@@ -66,7 +64,7 @@ void interactive() {
 int stop_vault() {
     if (!delete_user()) return -1;
 
-    if (!drop_user_table()) return -1;
+    if (!delete_user_data()) return -1;
     printf("\033[32mFile vault stopped!\033[0m\n");
     return 0;
 }

@@ -60,7 +60,7 @@ int my_query_privilege(unsigned long ino,uid_t uid){
     /*mysql_fetch_row检索结果集的下一行*/
     if (row = mysql_fetch_row(res)) {
         /*mysql_num_fields返回结果集中的字段数目*/
-        if (string_to_long_unsigned(row[2])==uid){
+        if (string_to_long_unsigned(row[1])==uid){
             return 1;
         }
         else return 0;
@@ -124,7 +124,7 @@ int main(int argc, char **argv)
     nlh->nlmsg_pid = saddr.nl_pid; //self port
 
     mysql_init(&mysql);
-    if(!mysql_real_connect(&mysql, "localhost", "root", "123456", "test", 0, NULL, 0)) {
+    if(!mysql_real_connect(&mysql, "localhost", "root", "123456", "filevault", 0, NULL, 0)) {
         printf("Failed to connect to Mysql!\n");
         return -1;
     }else {

@@ -61,14 +61,14 @@
   ./user_daemon_process
   ```
 
-- Now, do the experiment, to read/write/open the files in TestAudit (the protected dir). What I have done is:
+- Now, do the experiment, to read/write/open the files in TestAudit (the protected dir). 
 
   ```shell
-  user1$ vim /home/user1/TestAudit/hhh.txt
-  # Killed
-  user1$ cat /home/user2/TestAudit/test_file.txt
-  # This is the content of test_file.
+  user2$ cat /home/user1/TestAudit/hhh.txt
+  # Permission denied.
   ```
+
+- Problem: when killing **daemon** process, the system broke down.
 
 ## 项目中期检查报告
 

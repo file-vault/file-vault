@@ -11,6 +11,6 @@ clean:
 test:
 	make
 	sudo insmod AuditModule.ko
-	dmesg | tail -n 10
+	../daemon &
 show:
 	dmesg | tail -n 50

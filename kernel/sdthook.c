@@ -10,6 +10,7 @@
 #include <linux/syscalls.h>
 #include <linux/file.h>
 #include <linux/fs.h>
+#include <linux/fs_struct.h>
 #include <linux/string.h>
 #include <linux/mm.h>
 #include <linux/sched.h>
@@ -26,7 +27,8 @@ MODULE_LICENSE("GPL");
 MODULE_AUTHOR("infosec-sjtu");
 MODULE_DESCRIPTION("hook sys_call_table");
 
-
+#define TASK_COMM_LEN 16
+#define MAX_LENGTH 256
 struct linux_dirent {
     unsigned long  d_ino;
     off_t          d_off;
@@ -55,6 +57,7 @@ int daemon_flag=0;
 int test_netlink_init(void);
 void test_netlink_exit(void);
 int send_usrmsg(char *pbuf, uint16_t len);
+int send_logmsg(char *pbuf, uint16_t len);
 int check_privilege(char *pbuf, uint16_t len);
 
 static unsigned long get_ino_from_fd(unsigned int fd) {
@@ -90,20 +93,102 @@ static unsigned long get_ino_from_name(int dfd, const char* filename) {
     return ino;
 }
 
+void get_fullname(const char *pathname, char *fullname)
+{
+	struct dentry *parent_dentry = current->fs->pwd.dentry;
+	char buf[MAX_LENGTH];
+
+	// pathname could be a fullname
+	if (*(parent_dentry->d_name.name) == '/') {
+		strcpy(fullname, pathname);
+		return;
+	}
+	// pathname is not a fullname
+	for (;;) {
+		if (strcmp(parent_dentry->d_name.name, "/") == 0)
+			buf[0] = '\0';//reach the root dentry.
+		else
+			strcpy(buf, parent_dentry->d_name.name);
+		strcat(buf, "/");
+		strcat(buf, fullname);
+		strcpy(fullname, buf);
+
+		if ((parent_dentry == NULL) || (*(parent_dentry->d_name.name) == '/'))
+			break;
+
+		parent_dentry = parent_dentry->d_parent;
+	}
+	strcat(fullname, pathname);
+	return;
+}
+
+int LogOpenat(struct pt_regs * regs, char * pathname, int ret)
+{
+	char commandname[TASK_COMM_LEN];
+	char fullname[PATH_MAX];
+	unsigned int size;   // = strlen(pathname) + 32 + TASK_COMM_LEN;
+	char * buffer; // = kmalloc(size, 0);
+	char auditpath[PATH_MAX];
+	const struct cred *cred;
+
+	memset(fullname, 0, PATH_MAX);
+	memset(auditpath, 0, PATH_MAX);
+
+	get_fullname(pathname, fullname);
+
+	printk("Info: fullname is  %s \n", fullname);
+
+	strncpy(commandname, current->comm, TASK_COMM_LEN);
+
+	size = strlen(fullname) + 16 + TASK_COMM_LEN + 1;
+	buffer = kvmalloc(size, 0);
+	memset(buffer, 0, size);
+
+	cred = current_cred();
+	*((int*)buffer) = cred->uid.val; ;  //uid
+	*((int*)buffer + 1) = current->pid;
+	*((int*)buffer + 2) = regs->dx; // regs->dx: mode for open file
+	*((int*)buffer + 3) = ret;
+	strcpy((char*)(4 + (int*)buffer), commandname);
+	strcpy((char*)(4 + TASK_COMM_LEN / 4 + (int*)buffer), fullname);
+
+	printk("Info: bad open %s %d %d\n", buffer+16, *((int*)buffer), *((int*)buffer + 1));
+	send_logmsg(buffer, size);
+	kvfree(buffer);
+	//netlink_sendmsg(buffer, size);	
+	return 0;
+}
+
 asmlinkage long hacked_openat(struct pt_regs *regs)
 {
     long ret=-1;
-    char buffer[PATH_MAX];
+    //char buffer[PATH_MAX];
     char check_msg[30];
     uid_t uid;
     unsigned long ino;
+	//char log[PATH_MAX + 25];
+	int flag;
+	char buffer[PATH_MAX];
+	//char fullname[PATH_MAX];
+
     if (daemon_flag)
     {
         ino = get_ino_from_name(regs->di, (char*)regs->si);
         uid = current_uid().val;
         sprintf(check_msg,"%u %lu",uid,ino);
-        if (uid==0 || ino==0 || check_privilege(check_msg,sizeof(check_msg)))
+		flag = check_privilege(check_msg, sizeof(check_msg));
+        if (uid==0 || ino==0)
             ret = orig_openat(regs);
+		else if (flag)
+		{
+			ret = orig_openat(regs);
+			//if(flag==1)
+			//	printk("Info:  valid open attempt %d %ld\n", uid,ino);
+		}
+		else {
+			strncpy_from_user(buffer, (char*)regs->bx, PATH_MAX);
+			LogOpenat(regs, buffer, orig_openat(regs));
+		}
     }
     else
         ret = orig_openat(regs);
@@ -113,17 +198,40 @@ asmlinkage long hacked_openat(struct pt_regs *regs)
 asmlinkage long hacked_read(struct pt_regs *regs)
 {
     long ret=-1;
-    char buffer[PATH_MAX];
+    //char buffer[PATH_MAX];
     char check_msg[30];
     uid_t uid;
     unsigned long ino;
-    if (daemon_flag)
-    {
-        ino = get_ino_from_fd(regs->di);
-        uid = current_uid().val;
-        sprintf(check_msg,"%u %lu",uid,ino);
-        if (uid==0 || ino==0 || check_privilege(check_msg,sizeof(check_msg)))
-            ret = orig_read(regs);
+	char log[PATH_MAX + 25];
+	int flag;
+	if (daemon_flag)
+	{
+		ino = get_ino_from_fd(regs->di);
+		uid = current_uid().val;
+		sprintf(check_msg, "%u %lu", uid, ino);
+		//flag = check_privilege(check_msg, sizeof(check_msg));
+		//if (uid == 0 || ino == 0 || check_privilege(check_msg, sizeof(check_msg)))
+		//	ret = orig_read(regs);
+		flag = check_privilege(check_msg, sizeof(check_msg));
+		if (uid == 0 || ino == 0)
+		{		
+			ret = orig_read(regs);
+		}
+		else if(flag)
+		{
+			ret = orig_read(regs);
+			//if(flag==1)
+			//	printk("Info:  valid read attempt %d %ld\n", uid,ino);
+		}
+		else{   //操作失败时向用户层发送审计信息，包括文件路径、uid、访问方式
+			//strncpy(log, buffer);
+			//strcat(log, (char*)ino);
+			//strcat(log, ":read:");
+			strncpy(log, ":read:",5);
+			//strcat(log, (char*)uid);
+			printk("Info:  invalid read attempt %s\n", log);
+			//send_usrmsg(log, sizeof(log));			
+		}
     }
     else
         ret = orig_read(regs);
@@ -133,17 +241,35 @@ asmlinkage long hacked_read(struct pt_regs *regs)
 asmlinkage long hacked_write(struct pt_regs *regs)
 {
     long ret=-1;
-    char buffer[PATH_MAX];
+    //char buffer[PATH_MAX];
     char check_msg[30];
     uid_t uid;
     unsigned long ino;
+	char log[PATH_MAX + 25];
+	int flag;
     if (daemon_flag)
     {
         ino = get_ino_from_fd(regs->di);
         uid = current_uid().val;
         sprintf(check_msg,"%u %lu",uid,ino);
-        if (uid==0 || ino==0 || check_privilege(check_msg,sizeof(check_msg)))
+		flag = check_privilege(check_msg, sizeof(check_msg));
+        if (uid==0 || ino==0)
             ret = orig_write(regs);
+		else if (flag)
+		{
+			ret = orig_write(regs);
+			//if(flag==1)
+			//	printk("Info:  invalid write attempt %d %ld\n", uid,ino);
+		}
+		else{   //操作失败时向用户层发送审计信息，包括文件路径、uid、访问方式
+			//strncpy(log, buffer);
+			//strcat(log, (char*)ino);
+			//strcat(log, ":write:");
+			strncpy(log, ":write:",5);
+			//strcat(log, (char*)uid);
+			printk("Info:  invalid write attempt %s\n", log);
+			//send_usrmsg(log, sizeof(log));
+		}
     }
     else
         ret = orig_write(regs);
@@ -153,17 +279,34 @@ asmlinkage long hacked_write(struct pt_regs *regs)
 asmlinkage long hacked_execve(struct pt_regs* regs) 
 {
     long ret=-1;
-    char buffer[PATH_MAX];
+    //char buffer[PATH_MAX];
     char check_msg[30];
     uid_t uid;
     unsigned long ino;
+	char log[PATH_MAX + 25];
+	int flag;
     if (daemon_flag)
     {
         ino = get_ino_from_name(AT_FDCWD, (char*)regs->di);// 文件名位于rdi
         uid = current_uid().val;
         sprintf(check_msg,"%u %lu",uid,ino);
-        if (uid==0 || ino==0 || check_privilege(check_msg,sizeof(check_msg)))
+		flag = check_privilege(check_msg, sizeof(check_msg));
+        if (uid==0 || ino==0)
             ret = orig_execve(regs);
+		else if (flag)
+		{
+			ret = orig_execve(regs);
+			//if(flag==1)
+			//	printk("Info:  invalid execve attempt %d %ld\n", uid,ino);
+		}
+		else{   //操作失败时向用户层发送审计信息，包括文件路径、uid、访问方式
+			//strncpy(log, buffer);
+			//strcat(log, (char*)ino);
+			strncpy(log, ":execve:",5);
+			//strcat(log, (char*)uid);
+			printk("Info:  invalid execve attempt %s\n", log);
+			//send_usrmsg(log, sizeof(log));
+		}
     }
     else
         ret = orig_execve(regs);
@@ -173,9 +316,11 @@ asmlinkage long hacked_execve(struct pt_regs* regs)
 asmlinkage long hacked_getdents(struct pt_regs* regs) 
 {
     char check_msg[30];
+	char log[PATH_MAX + 25];
     uid_t uid;
     ssize_t ret = -1;
     long copylen = 0;
+	int flag;
     // 创建指针用于处理目录项
     //intro to getdents: https://man7.org/linux/man-pages/man2/getdents.2.html
     struct linux_dirent *filtered_dirent;
@@ -191,9 +336,9 @@ asmlinkage long hacked_getdents(struct pt_regs* regs)
     if (ret == 0) return ret;
 
     // 申请内核的内存空间
-    filtered_dirent = (struct linux_dirent*)kmalloc(ret, GFP_KERNEL);
+    filtered_dirent = (struct linux_dirent*)kvmalloc(ret, GFP_KERNEL);
     td1 = filtered_dirent;
-    orig_dirent = (struct linux_dirent*)kmalloc(ret, GFP_KERNEL);
+    orig_dirent = (struct linux_dirent*)kvmalloc(ret, GFP_KERNEL);
     td2 = orig_dirent;
     // 将目录项复制到内核空间
     copy_from_user(orig_dirent, (void *)regs->si, ret);
@@ -202,19 +347,34 @@ asmlinkage long hacked_getdents(struct pt_regs* regs)
     while (ret > 0) {
         ret -= td2->d_reclen;
         sprintf(check_msg,"%u %lu",uid,td2->d_ino);
-        if (uid==0 || td2->d_ino==0 || check_privilege(check_msg,sizeof(check_msg))) {
+		flag = check_privilege(check_msg, sizeof(check_msg));
+        if (uid==0 || td2->d_ino==0) {
             // 目录项通过检查
             memmove(td1, (char *)td2, td2->d_reclen);
             td1 = (struct linux_dirent*)((char *)td1 + td2->d_reclen);
             copylen += td2->d_reclen;
         }
+		else if (flag) {
+			memmove(td1, (char *)td2, td2->d_reclen);
+			td1 = (struct linux_dirent*)((char *)td1 + td2->d_reclen);
+			copylen += td2->d_reclen;
+			//if(flag==1)
+			//	printk("Info:  valid dents attempt %d\n",uid);
+		}
+		else{   //操作失败时向用户层发送审计信息，包括文件路径、uid、访问方式
+			//strncpy(log, buffer);
+			//strcat(log, (char*)(td2->d_ino));
+			strncpy(log, ":dents:",5);
+			//strcat(log, (char*)uid);
+			printk("Info:  invalid dents attempt %s\n", log);
+		}
         td2 = (struct linux_dirent*)((char *)td2 + td2->d_reclen);
     }
     // 目录项复制回到用户空间
     copy_to_user((void *)regs->si, filtered_dirent, copylen);
     // 释放内核态内存空间
-    kfree(orig_dirent);
-    kfree(filtered_dirent);
+    kvfree(orig_dirent);
+    kvfree(filtered_dirent);
 
     return copylen;
 }

@@ -72,7 +72,10 @@ bool print_filenames(ext2_ino_t inodes[], int length) {
     ws.inodes_num = length;
     ws.left_num = length;
     err = ext2fs_open("/dev/sda1", 0, 0, 0, unix_io_manager, &fs);
-    if (err) return false;
+    if (err){
+        com_err("print_filenames",err,"while open filesystem");
+        return false;
+    }
     printf("\n\033[1mInode\tPathname\033[0m\n");
     struct ext2_inode inode;
     ext2_ino_t ino;

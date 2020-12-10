@@ -42,25 +42,6 @@ int cmd_add() {
     return 0;
 }
 
-void interactive() {
-    char *action = NULL;
-    size_t len = 0, num;
-    do {
-        printf("\033[32m>>\033[0m");
-        if ((num = getline(&action, &len, stdin)) <= 0)break;
-        if (action[num - 1] == '\n')action[num - 1] = '\0';
-        if (strncasecmp(action, "ls", 2) == 0) {
-            //ls
-        } else if (strncasecmp(action, "remove", 2) == 0) {
-            //remove from vault
-        } else if (strncasecmp(action, "cd", 2) == 0) {
-            //cd
-        }
-    } while (strcasecmp(action, "q") != 0); //Enter `Q` or `q` to exit.
-    printf("Bye~\n");
-    free(action);
-}
-
 int stop_vault() {
     if (!delete_user()) return -1;
 
@@ -73,8 +54,40 @@ int list() {
     ext2_ino_t *files = NULL;
     int len = fetch_inodes(&files);
     print_filenames(files, len);
+    printf("\n");
     free(files);
     return 0;
+}
+
+void interactive() {
+    char *action = NULL;
+    size_t len = 0, num;
+    do {
+        printf("\033[32m>>\033[0m");
+        if ((num = getline(&action, &len, stdin)) <= 0)break;
+        if (action[num - 1] == '\n')action[num - 1] = '\0';
+        if (strcasecmp(action, "list") == 0) {
+            list();
+        } else if (strncasecmp(action, "add ", 4) == 0) {
+            char *path = strtok(action, " ");
+            path = strtok(NULL, " ");
+            add_file(path);
+        } else if (strncasecmp(action, "remove ", 7) == 0) {
+            char *path = strtok(action, " ");
+            path = strtok(NULL, " ");
+            remove_file(path);
+        } else if (strncasecmp(action, "rm-ino ", 7) == 0) {
+            char *ino = strtok(action, " ");
+            ino = strtok(NULL, " ");
+            if(remove_ino(strtoul(ino, NULL, 0))){
+                printf("%s removed.\n", ino);
+            }
+        } else if (strcasecmp(action, "q") == 0) {
+            return;
+        }
+    } while (strcasecmp(action, "q") != 0); //Enter `Q` or `q` to exit.
+    printf("Bye~\n");
+    free(action);
 }
 
 int main(int argc, char **argv) {
@@ -95,8 +108,6 @@ int main(int argc, char **argv) {
             {"remove",   required_argument, NULL, 'r'},
             {"add",      required_argument, NULL, 'a'},
             {"interact", no_argument,       NULL, 'i'},
-//            {"enable",   no_argument,       NULL, 'e'},
-//            {"disable",  no_argument,       NULL, 'd'},
             {"stop",     no_argument,       NULL, 's'},
             {"list",     no_argument,       NULL, 'l'},
     };

@@ -3,12 +3,12 @@
 ### How to run
 
 #### Reqirements
-
-- mysql  -uroot -p123456
-- sudo apt-get install openssl-devel (this is for openssl.h)
-- sudo apt-get install libmysql++-dev (this is for mysql.h)
-- sudo apt install e2fslibs-dev
-- sudo snap install cmake --classic
+mysql  -uroot -p123456
+sudo apt-get install libmysql++-dev (this is for mysql.h)
+sudo apt-get install openssl (this is for openssl.h)
+sudo apt-get install libssl-dev (this is for openssl.h)
+sudo apt install e2fslibs-dev
+sudo snap install cmake --classic
 
 
 

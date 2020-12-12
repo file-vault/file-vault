@@ -26,62 +26,8 @@ typedef struct _user_msg_info
     char  msg[MSG_LEN];
 } user_msg_info;
 
-//MYSQL mysql;
+
 FILE *logfile;
-unsigned string_to_long_unsigned(char *s)
-{
-    long unsigned int result = 0;
-    for (int i = strlen(s) - 1; i >= 0; --i){
-        unsigned temp = 0;
-        int k = strlen(s) - i - 1;
-        if (isdigit(s[i])){
-            temp = s[i] - '0';
-            while (k--){
-                temp *= 10;
-            }
-            result += temp;
-        }
-        else{
-            break;
-        }
-    }
-    return result;
-}
-/*
-int my_query_privilege(unsigned long ino,uid_t uid){
-    int flag;
-    char query[100];
-    sprintf(query,"select * from info where ino=%lu",ino);
-    MYSQL_RES *res;
-    MYSQL_ROW row;
-    flag = mysql_real_query(&mysql, query, (unsigned int)strlen(query));
-    if(flag) {
-        printf("Query failed!\n");
-        return -1;
-    }else {
-        //printf("[%s]\n", query);
-    }
-    res = mysql_store_result(&mysql);
-    //mysql_fetch_row检索结果集的下一行
-    if (row = mysql_fetch_row(res)) {
-        //mysql_num_fields返回结果集中的字段数目
-        if (string_to_long_unsigned(row[2])==uid){
-            return 1;
-        }
-        else return 0;
-    }
-    else
-        return 2;
-}
-*/
-unsigned get_unsigned_length(unsigned long num) {
-    unsigned length = 0;
-    while (num) {
-        num /= 10;
-        length++;
-    }
-    return length;
-}
 
 void Log(char *commandname, int uid, int pid, char *file_path, int flags, int ret)
 {
@@ -89,12 +35,13 @@ void Log(char *commandname, int uid, int pid, char *file_path, int flags, int re
 	char username[32];
 	struct passwd *pwinfo;
 	char openresult[10];
-	char opentype[16];
-	strcpy(openresult, "failed");
-	if (flags & O_RDONLY) strcpy(opentype, "Read");
+	//char opentype[16];
+	strcpy(openresult, "denied");
+	
+	/*if (flags & O_RDONLY) strcpy(opentype, "Read");
 	else if (flags & O_WRONLY) strcpy(opentype, "Write");
 	else if (flags & O_RDWR) strcpy(opentype, "Read/Write");
-	else strcpy(opentype, "other");
+	else strcpy(opentype, "other");*/
 
 	time_t t = time(0);
 	if (logfile == NULL)	return;
@@ -102,12 +49,12 @@ void Log(char *commandname, int uid, int pid, char *file_path, int flags, int re
 	strcpy(username, pwinfo->pw_name);
 
 	strftime(logtime, sizeof(logtime), TM_FMT, localtime(&t));
-	fprintf(logfile, "%s(%d) %s(%d) %s \"%s\" %s %s\n", username, uid, commandname, pid, logtime, file_path, opentype, openresult);
+	//fprintf(logfile, "%s(%d) %s(%d) %s \"%s\" %s %s\n", username, uid, commandname, pid, logtime, file_path, opentype, openresult);
+	fprintf(logfile, "%s(%d) %s(%d) %s path:\"%s\" %s \n", username, uid, commandname, pid, logtime, file_path, openresult);
 	fflush(logfile);
-	printf("%s(%d) %s(%d) %s \"%s\" %s %s\n", username, uid, commandname, pid, logtime, file_path, opentype, openresult);
+	//printf("%s(%d) %s(%d) %s \"%s\" %s %s\n", username, uid, commandname, pid, logtime, file_path, opentype, openresult);
+	printf("%s(%d) %s(%d) %s path:\"%s\" %s \n", username, uid, commandname, pid, logtime, file_path,  openresult);
 }
-
-
 
 int main(int argc, char **argv)
 {
@@ -162,14 +109,6 @@ int main(int argc, char **argv)
     nlh->nlmsg_seq = 0;
     nlh->nlmsg_pid = saddr.nl_pid; //self port
 
-    /*mysql_init(&mysql);
-    if(!mysql_real_connect(&mysql, "localhost", "root", "123456", "test", 0, NULL, 0)) {
-        printf("Failed to connect to Mysql!\n");
-        return -1;
-    }else {
-        printf("Connected to Mysql successfully!\n");
-    }*/
-
 	logfile = fopen(logpath, "a+");  //打开文件
 	if (logfile == NULL) {
 		printf("Waring: can not create log file\n");
@@ -182,14 +121,7 @@ int main(int argc, char **argv)
     sprintf(umsg,"daemon log start");
     memcpy(NLMSG_DATA(nlh), umsg, strlen(umsg));
     printf("%s\n",umsg);
-    /*ret = sendto(skfd, nlh, nlh->nlmsg_len, 0, (struct sockaddr *)&daddr, sizeof(struct sockaddr_nl));
-    if(!ret)
-    {
-        perror("send to error\n");
-        close(skfd);
-        exit(-1);
-    }
-	*/
+
     while(1)
     {
 		unsigned int uid, pid, flags, ret;
@@ -204,26 +136,17 @@ int main(int argc, char **argv)
             close(skfd);
             exit(-1);
         }
-       
-		//判断消息的种类，日志信息的情况
+       		
 			printf("log from kernel: %s\n", u_info.msg);
-
+			//解析记录消息
 			uid = *((unsigned int *)u_info.msg);
 			pid = *(1 + (int *)u_info.msg);
 			flags = *(2 + (int *)u_info.msg);
 			ret = *(3 + (int *)u_info.msg);
 			commandname = (char *)(4 + (int *)u_info.msg);
 			file_path = (char *)(4 + 16 / 4 + (int *)u_info.msg);
-			Log(commandname, uid, pid, file_path, flags, ret);
-			//fprintf(logfile, "log from kernel: %s\n", u_info.msg);
-			/*char *q;
-			q = strtok(u_info.msg, ":");
-			char *path = q;
-			q = strtok(NULL, ":");
-			char *opt = q;
-			q = strtok(NULL, "");
-			unsigned int userid = string_to_long_unsigned(q);
-			fprintf(logfile, "%s %s %d\n", path, opt, userid);*/		
+			Log(commandname, uid, pid, file_path, flags, ret); //调用LOG函数进行记录
+	
     }
 	if (logfile != NULL)
 		fclose(logfile);

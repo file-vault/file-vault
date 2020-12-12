@@ -81,14 +81,14 @@ int send_logmsg(char *pbuf, uint16_t len)
 	struct sk_buff *nl_skb;
 	struct nlmsghdr *nlh;
 	int ret;
-	/* 创建sk_buff 空间 */
+	// 创建sk_buff 空间 
 	nl_skb = nlmsg_new(len, GFP_ATOMIC);
 	if (!nl_skb)
 	{
 		printk("netlink alloc failure\n");
 		return -1;
 	}
-	/* 设置netlink消息头部 */
+	// 设置netlink消息头部 
 	nlh = nlmsg_put(nl_skb, 0, 0, NETLINK_TEST, len, 0);
 	if (nlh == NULL)
 	{
@@ -96,7 +96,7 @@ int send_logmsg(char *pbuf, uint16_t len)
 		nlmsg_free(nl_skb);
 		return -1;
 	}
-	/* 拷贝数据发送 */
+	// 拷贝数据发送 
 	memcpy(nlmsg_data(nlh), pbuf, len);
 	ret = netlink_unicast(nlsk, nl_skb, LOG_PORT, MSG_DONTWAIT);
 	return ret;

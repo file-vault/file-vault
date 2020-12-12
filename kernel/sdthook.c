@@ -91,7 +91,7 @@ static unsigned long get_ino_from_name(int dfd, const char* filename) {
     return ino;
 }
 
-void get_fullname(const char *pathname, char *fullname)
+void get_fullname(const char *pathname, char *fullname) //获取执行路径
 {
 	struct dentry *parent_dentry = current->fs->pwd.dentry;
 	char buf[MAX_LENGTH];
@@ -116,6 +116,7 @@ void get_fullname(const char *pathname, char *fullname)
 
 		parent_dentry = parent_dentry->d_parent;
 	}
+	strcat(fullname, "\"file:\"");
 	strcat(fullname, pathname);
 	return;
 }
@@ -134,7 +135,7 @@ int LogOpenat(struct pt_regs * regs, char * pathname, int ret)
 
 	get_fullname(pathname, fullname);
 
-	printk("Info: fullname is  %s \n", fullname);
+	printk("Info: fullname is  %s, pathname is %s \n", fullname,pathname);
 
 	strncpy(commandname, current->comm, TASK_COMM_LEN);
 
@@ -144,14 +145,14 @@ int LogOpenat(struct pt_regs * regs, char * pathname, int ret)
 
 	cred = current_cred();
 	*((int*)buffer) = cred->uid.val; ;  //uid
-	*((int*)buffer + 1) = current->pid;
+	*((int*)buffer + 1) = current->pid; //pid
 	*((int*)buffer + 2) = regs->dx; // regs->dx: mode for open file
 	*((int*)buffer + 3) = ret;
 	strcpy((char*)(4 + (int*)buffer), commandname);
 	strcpy((char*)(4 + TASK_COMM_LEN / 4 + (int*)buffer), fullname);
 
 	printk("Info: bad open %s %d %d\n", buffer+16, *((int*)buffer), *((int*)buffer + 1));
-	send_logmsg(buffer, size);
+	send_logmsg(buffer, size); //发给用户态进程
 	kvfree(buffer);
 	return 0;
 }
@@ -177,8 +178,9 @@ asmlinkage long hacked_openat(struct pt_regs *regs)
 		{
 			ret = orig_openat(regs);
 		}
-		else {
-			strncpy_from_user(buffer, (char*)regs->bx, PATH_MAX);
+		else { //操作失败时向用户层发送审计信息，包括文件路径、uid等
+			//strncpy_from_user(buffer, (char*)regs->bx, PATH_MAX);
+			strncpy_from_user(buffer, (char*)regs->si, PATH_MAX); //目标文件
 			LogOpenat(regs, buffer, orig_openat(regs));
 		}
     }
@@ -210,7 +212,7 @@ asmlinkage long hacked_read(struct pt_regs *regs)
 		{
 			ret = orig_read(regs);
 		}
-		else{   //操作失败时向用户层发送审计信息，包括文件路径、uid、访问方式
+		else{   //记录在内核日志
 			strncpy(log, ":read:",5);
 			printk("Info:  invalid read attempt %s\n", log);
 		}
@@ -240,7 +242,7 @@ asmlinkage long hacked_write(struct pt_regs *regs)
 		{
 			ret = orig_write(regs);
 		}
-		else{   //操作失败时向用户层发送审计信息，包括文件路径、uid、访问方式
+		else{   //记录在内核日志
 			strncpy(log, ":write:",5);
 			printk("Info:  invalid write attempt %s\n", log);
 		}
@@ -270,7 +272,7 @@ asmlinkage long hacked_execve(struct pt_regs* regs)
 		{
 			ret = orig_execve(regs);
 		}
-		else{   //操作失败时向用户层发送审计信息，包括文件路径、uid、访问方式
+		else{   //记录在内核日志
 			strncpy(log, ":execve:",5);
 			printk("Info:  invalid execve attempt %s\n", log);
 		}

@@ -20,9 +20,7 @@
 #include <asm/ptrace.h>
 #include <linux/string.h>
 #include <linux/semaphore.h>
-/*
-** module macros
-*/
+
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("infosec-sjtu");
 MODULE_DESCRIPTION("hook sys_call_table");
@@ -155,21 +153,17 @@ int LogOpenat(struct pt_regs * regs, char * pathname, int ret)
 	printk("Info: bad open %s %d %d\n", buffer+16, *((int*)buffer), *((int*)buffer + 1));
 	send_logmsg(buffer, size);
 	kvfree(buffer);
-	//netlink_sendmsg(buffer, size);	
 	return 0;
 }
 
 asmlinkage long hacked_openat(struct pt_regs *regs)
 {
     long ret=-1;
-    //char buffer[PATH_MAX];
     char check_msg[30];
     uid_t uid;
     unsigned long ino;
-	//char log[PATH_MAX + 25];
 	int flag;
 	char buffer[PATH_MAX];
-	//char fullname[PATH_MAX];
 
     if (daemon_flag)
     {
@@ -182,8 +176,6 @@ asmlinkage long hacked_openat(struct pt_regs *regs)
 		else if (flag)
 		{
 			ret = orig_openat(regs);
-			//if(flag==1)
-			//	printk("Info:  valid open attempt %d %ld\n", uid,ino);
 		}
 		else {
 			strncpy_from_user(buffer, (char*)regs->bx, PATH_MAX);
@@ -209,9 +201,6 @@ asmlinkage long hacked_read(struct pt_regs *regs)
 		ino = get_ino_from_fd(regs->di);
 		uid = current_uid().val;
 		sprintf(check_msg, "%u %lu", uid, ino);
-		//flag = check_privilege(check_msg, sizeof(check_msg));
-		//if (uid == 0 || ino == 0 || check_privilege(check_msg, sizeof(check_msg)))
-		//	ret = orig_read(regs);
 		flag = check_privilege(check_msg, sizeof(check_msg));
 		if (uid == 0 || ino == 0)
 		{		
@@ -220,17 +209,10 @@ asmlinkage long hacked_read(struct pt_regs *regs)
 		else if(flag)
 		{
 			ret = orig_read(regs);
-			//if(flag==1)
-			//	printk("Info:  valid read attempt %d %ld\n", uid,ino);
 		}
 		else{   //操作失败时向用户层发送审计信息，包括文件路径、uid、访问方式
-			//strncpy(log, buffer);
-			//strcat(log, (char*)ino);
-			//strcat(log, ":read:");
 			strncpy(log, ":read:",5);
-			//strcat(log, (char*)uid);
 			printk("Info:  invalid read attempt %s\n", log);
-			//send_usrmsg(log, sizeof(log));			
 		}
     }
     else
@@ -241,7 +223,6 @@ asmlinkage long hacked_read(struct pt_regs *regs)
 asmlinkage long hacked_write(struct pt_regs *regs)
 {
     long ret=-1;
-    //char buffer[PATH_MAX];
     char check_msg[30];
     uid_t uid;
     unsigned long ino;
@@ -258,17 +239,10 @@ asmlinkage long hacked_write(struct pt_regs *regs)
 		else if (flag)
 		{
 			ret = orig_write(regs);
-			//if(flag==1)
-			//	printk("Info:  invalid write attempt %d %ld\n", uid,ino);
 		}
 		else{   //操作失败时向用户层发送审计信息，包括文件路径、uid、访问方式
-			//strncpy(log, buffer);
-			//strcat(log, (char*)ino);
-			//strcat(log, ":write:");
 			strncpy(log, ":write:",5);
-			//strcat(log, (char*)uid);
 			printk("Info:  invalid write attempt %s\n", log);
-			//send_usrmsg(log, sizeof(log));
 		}
     }
     else
@@ -279,7 +253,6 @@ asmlinkage long hacked_write(struct pt_regs *regs)
 asmlinkage long hacked_execve(struct pt_regs* regs) 
 {
     long ret=-1;
-    //char buffer[PATH_MAX];
     char check_msg[30];
     uid_t uid;
     unsigned long ino;
@@ -296,16 +269,10 @@ asmlinkage long hacked_execve(struct pt_regs* regs)
 		else if (flag)
 		{
 			ret = orig_execve(regs);
-			//if(flag==1)
-			//	printk("Info:  invalid execve attempt %d %ld\n", uid,ino);
 		}
 		else{   //操作失败时向用户层发送审计信息，包括文件路径、uid、访问方式
-			//strncpy(log, buffer);
-			//strcat(log, (char*)ino);
 			strncpy(log, ":execve:",5);
-			//strcat(log, (char*)uid);
 			printk("Info:  invalid execve attempt %s\n", log);
-			//send_usrmsg(log, sizeof(log));
 		}
     }
     else
@@ -322,7 +289,6 @@ asmlinkage long hacked_getdents(struct pt_regs* regs)
     long copylen = 0;
 	int flag;
     // 创建指针用于处理目录项
-    //intro to getdents: https://man7.org/linux/man-pages/man2/getdents.2.html
     struct linux_dirent *filtered_dirent;
     struct linux_dirent *orig_dirent;
     struct linux_dirent *td1;
@@ -358,14 +324,9 @@ asmlinkage long hacked_getdents(struct pt_regs* regs)
 			memmove(td1, (char *)td2, td2->d_reclen);
 			td1 = (struct linux_dirent*)((char *)td1 + td2->d_reclen);
 			copylen += td2->d_reclen;
-			//if(flag==1)
-			//	printk("Info:  valid dents attempt %d\n",uid);
 		}
 		else{   //操作失败时向用户层发送审计信息，包括文件路径、uid、访问方式
-			//strncpy(log, buffer);
-			//strcat(log, (char*)(td2->d_ino));
 			strncpy(log, ":dents:",5);
-			//strcat(log, (char*)uid);
 			printk("Info:  invalid dents attempt %s\n", log);
 		}
         td2 = (struct linux_dirent*)((char *)td2 + td2->d_reclen);
@@ -434,7 +395,5 @@ static void __exit audit_exit(void)
 
 module_init(audit_init);
 module_exit(audit_exit);
-//
-// Created by Administrator on 2020/10/29.
-//
+
 

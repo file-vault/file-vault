@@ -1,0 +1,10 @@
+test(1002) ls(33836) 2020-12-11 19:54:12 "/home/gzh/Desktop/tmp/" other failed
+test(1002) cat(33838) 2020-12-11 19:54:17 "/home/gzh/Desktop/tmp/" other failed
+test(1002) cat(33839) 2020-12-11 19:54:22 "/home/gzh/Desktop/tmp/" other failed
+test(1002) bash(33826) 2020-12-11 19:54:29 "/home/gzh/Desktop/tmp/" Write failed
+test(1002) bash(33840) 2020-12-11 19:54:39 "/home/gzh/Desktop/tmp/./a.out" other failed
+test(1002) vi(33841) 2020-12-11 19:54:51 "/home/gzh/Desktop/tmp//usr/share/vim/vimrc.tiny" other failed
+test(1002) vi(33841) 2020-12-11 19:54:51 "/home/gzh/Desktop/tmp//home/test/.vimrc" other failed
+test(1002) vi(33841) 2020-12-11 19:54:51 "/home/gzh/Desktop/tmp//home/test/.vim/vimrc" other failed
+test(1002) vi(33841) 2020-12-11 19:54:51 "/home/gzh/Desktop/tmp//home/test/.exrc" other failed
+test(1002) vi(33841) 2020-12-11 19:54:51 "/home/gzh/Desktop/tmp//home/gzh/Desktop/tmp/1.txt" other failed

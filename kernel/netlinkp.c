@@ -1,11 +1,3 @@
-/****************************************
-* Author: zhangwj
-* Date: 2017-01-19
-* Filename: netlink_test.c
-* Descript: netlink of kernel
-* Kernel: 3.10.0-327.22.2.el7.x86_64
-* Warning:
-******************************************/
 #include <linux/init.h>
 #include <linux/module.h>
 #include <linux/types.h>
@@ -25,12 +17,11 @@ extern int daemon_flag;
 static int ino_len = sizeof(unsigned long);
 static atomic_t sequence = ATOMIC_INIT(0);
 
-// 创建了一个队列，使用信号量保护
-static struct queue {
+// detailed description of the Sigs used here is elaborated in our document
+static struct Sigs {
     int data[65536];
     struct semaphore sem[65536];
 } rspbuf;
-DEFINE_RATELIMIT_STATE(rs, 3 * HZ, 1);
 
 unsigned string_to_long_unsigned(char *s)
 {
@@ -68,55 +59,21 @@ int check_privilege(char *pbuf, uint16_t len)
     nlh = nlmsg_put(skb, 0, 0, NETLINK_TEST, len, 0);
     seq = atomic_inc_return(&sequence);
     nlh->nlmsg_seq = seq;
-    //*(unsigned long*)NLMSG_DATA(nlh) = inode;
     memcpy(nlmsg_data(nlh), pbuf, len);
     // printk("%s\n",pbuf);
     // printk("%d\n",rspbuf.data[seq]);
     // return 0;
-    // if(printk_ratelimit()){
-    //     printk("send: %d\n",nlh->nlmsg_seq);
-    // }
+    if(printk_ratelimit()){
+        printk("send: %d\n",nlh->nlmsg_seq);
+    }
     nlmsg_unicast(nlsk, skb, USER_PORT);
-
     // if(printk_ratelimit()){
     //     printk("down signal:%d\n",rspbuf.sem[seq].count);
     //     printk("before data:%d\n",rspbuf.data[seq]);
     // }
     // return 1;
-
-    if (down_timeout(&rspbuf.sem[seq], 3 * HZ)) {
-        if (__ratelimit(&rs)) {
-            printk(KERN_NOTICE "[fvault] fvault terminated!\n");
-        }
-        return 0;
-    }
+    down(&rspbuf.sem[seq]);
     return rspbuf.data[seq];
-}
-
-int send_usrmsg(char *pbuf, uint16_t len)
-{
-    struct sk_buff *nl_skb;
-    struct nlmsghdr *nlh;
-    int ret;
-    /* 创建sk_buff 空间 */
-    nl_skb = nlmsg_new(len, GFP_ATOMIC);
-    if(!nl_skb)
-    {
-        printk("netlink alloc failure\n");
-        return -1;
-    }
-    /* 设置netlink消息头部 */
-    nlh = nlmsg_put(nl_skb, 0, 0, NETLINK_TEST, len, 0);
-    if(nlh == NULL)
-    {
-        printk("nlmsg_put failaure \n");
-        nlmsg_free(nl_skb);
-        return -1;
-    }
-    /* 拷贝数据发送 */
-    memcpy(nlmsg_data(nlh), pbuf, len);
-    ret = netlink_unicast(nlsk, nl_skb, USER_PORT,MSG_DONTWAIT);
-    return ret;
 }
 
 int send_logmsg(char *pbuf, uint16_t len)
@@ -158,11 +115,11 @@ static void netlink_rcv_msg(struct sk_buff *skb)
         else
         {
             rspbuf.data[nlh->nlmsg_seq] = (int)(umsg[0])-48;
-            // if(printk_ratelimit()){
-            //     printk("rev:%d\n",nlh->nlmsg_seq);
+            if(printk_ratelimit()){
+                printk("rev:%d\n",nlh->nlmsg_seq);
             //     printk("after data:%d\n",rspbuf.data[nlh->nlmsg_seq]);
             //     printk("up signal1:%d\n",rspbuf.sem[nlh->nlmsg_seq].count);
-            // }
+            }
             up(&rspbuf.sem[nlh->nlmsg_seq]);
             // if(printk_ratelimit()){
             //     printk("up signal2:%d\n",rspbuf.sem[nlh->nlmsg_seq].count);
@@ -189,7 +146,6 @@ int test_netlink_init(void)
         rspbuf.data[i] = 0;
         sema_init(&rspbuf.sem[i], 0);
     }
-    ratelimit_set_flags(&rs, RATELIMIT_MSG_ON_RELEASE);
     printk("test_netlink_init\n");
     return 0;
 }
@@ -197,7 +153,7 @@ int test_netlink_init(void)
 void test_netlink_exit(void)
 {
     if (nlsk){
-        netlink_kernel_release(nlsk); /* release ..*/
+        netlink_kernel_release(nlsk); /* release */
         nlsk = NULL;
     }
     printk("test_netlink_exit!\n");

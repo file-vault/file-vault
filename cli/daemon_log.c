@@ -20,7 +20,6 @@
 #define MSG_LEN            125
 #define MAX_PLOAD        125
 
-
 typedef struct _user_msg_info
 {
     struct nlmsghdr hdr;

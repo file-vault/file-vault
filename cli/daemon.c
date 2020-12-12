@@ -53,8 +53,6 @@ int my_query_privilege(unsigned long ino,uid_t uid){
     if(flag) {
         printf("Query failed!\n");
         return -1;
-    }else {
-        //printf("[%s]\n", query);
     }
     res = mysql_store_result(&mysql);
     /*mysql_fetch_row检索结果集的下一行*/
@@ -131,6 +129,7 @@ int main(int argc, char **argv)
         printf("Connected to Mysql successfully!\n");
     }
 
+    // notify kernel daemon start to run
     sprintf(umsg,"daemon start");
     memcpy(NLMSG_DATA(nlh), umsg, strlen(umsg));
     printf("%s\n",umsg);
@@ -153,17 +152,16 @@ int main(int argc, char **argv)
             close(skfd);
             exit(-1);
         }
-        //printf("from kernel: %s\n",u_info.msg);
+        //parse the request
         char *p;
         p=strtok(u_info.msg," ");
         unsigned int uid=string_to_long_unsigned(p);
         p=strtok(NULL,"");
         unsigned int ino=string_to_long_unsigned(p);
-        result = my_query_privilege(ino,uid);
-        //check mysql and send to netlink_test
+        //check mysql according to the request 
+        result = my_query_privilege(ino,uid); 
+      	//send the result to the kernel
         sprintf(umsg,"%d",result);
-        //printf("%s\n",umsg);
-        //printf("%d\n",u_info.hdr.nlmsg_seq);
         nlh->nlmsg_seq = u_info.hdr.nlmsg_seq;
         memcpy(NLMSG_DATA(nlh), umsg, strlen(umsg));
         ret = sendto(skfd, nlh, nlh->nlmsg_len, 0, (struct sockaddr *)&daddr, sizeof(struct sockaddr_nl));

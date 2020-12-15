@@ -74,8 +74,7 @@ bool create_user(const char *hashed_password) {
     return true;
 }
 
-bool add_ino(ino_t ino) {
-    uid_t uid = getuid();
+bool add_ino(uid_t uid,ino_t ino) {
     static const char *format = "insert into info (uid,ino) values(%lu,%u);";
     char *query = (char *) malloc(
             (strlen(format) + get_unsigned_length(uid) + get_unsigned_length(ino)) * sizeof(char));
@@ -88,8 +87,7 @@ bool add_ino(ino_t ino) {
     return true;
 }
 
-bool remove_ino(ino_t ino) {
-    uid_t uid = getuid();
+bool remove_ino(uid_t uid,ino_t ino) {
     const char *format = "delete from info where uid=%u and ino=%lu;";
     char *query = (char *) malloc(
             (strlen(format) + get_unsigned_length(uid) + get_unsigned_length(ino)) * sizeof(char));
@@ -102,18 +100,18 @@ bool remove_ino(ino_t ino) {
     return true;
 }
 
-bool remove_file(const char *path) {
+bool remove_file(uid_t uid,const char *path) {
     ino_t ino = get_ino(path);
     if (ino == 0) {
         fprintf(stderr, "Unknown file: %s\n", optarg);
         return false;
     }
-    if (!remove_ino(ino)) {
+    if (!remove_ino(uid,ino)) {
         fprintf(stderr, "Failed to remove file %lu.\n", ino);
         return false;
     }
     if (is_dir(path)) {
-        walk_dir(path, remove_ino);
+        walk_dir(uid,path, remove_ino);
         printf("Directory %lu removed.\n", ino);
     } else {
         printf("File %lu removed.\n", ino);
@@ -121,7 +119,7 @@ bool remove_file(const char *path) {
     return true;
 }
 
-bool add_file(const char *path) {
+bool add_file(uid_t uid,const char *path) {
     ino_t ino = get_ino(path);
     if (ino == 0) {
         fprintf(stderr, "Unknown file: %s\n", optarg);
@@ -131,12 +129,12 @@ bool add_file(const char *path) {
         fprintf(stderr, "You are not the owner of the file: %s\n", optarg);
         return false;
     }
-    if (!add_ino(ino)) {
+    if (!add_ino(uid,ino)) {
         fprintf(stderr, "Failed to add file %lu.\n", ino);
         return false;
     }
     if (is_dir(path)) {
-        walk_dir(path, add_ino);
+        walk_dir(uid,path, add_ino);
         printf("Directory %lu added.\n", ino);
     } else {
         printf("File %lu added.\n", ino);
@@ -144,7 +142,7 @@ bool add_file(const char *path) {
     return true;
 }
 
-void walk_dir(const char *path, callback c) {
+void walk_dir(uid_t uid,const char *path, callback c) {
     struct dirent *entry;
 
     DIR *dir_p = opendir(path);
@@ -153,10 +151,10 @@ void walk_dir(const char *path, callback c) {
         if ((entry->d_type & DT_DIR) == DT_DIR) {
             char *sub_path = (char *) malloc((strlen(path) + 1 + strlen(entry->d_name)) * sizeof(char));
             sprintf(sub_path, "%s/%s", path, entry->d_name);
-            walk_dir(sub_path, c);
+            walk_dir(uid,sub_path, c);
             free(sub_path);
         }
-        c(entry->d_ino);
+        c(uid,entry->d_ino);
     }
 }
 
@@ -186,8 +184,7 @@ bool delete_user_data() {
     return true;
 }
 
-int fetch_inodes(ext2_ino_t *files[]) {
-    uid_t uid = getuid();
+int fetch_inodes(uid_t uid,ext2_ino_t *files[]) {
     const char *format = "select ino from info where uid=%u;";
     char *query = (char *) malloc((strlen(format) + get_unsigned_length(uid)) * sizeof(char));
     sprintf(query, format, uid);
@@ -202,6 +199,25 @@ int fetch_inodes(ext2_ino_t *files[]) {
     int i = 0;
     while ((row = mysql_fetch_row(res))) {
         (*files)[i] = (ext2_ino_t) strtol(row[0], NULL, 10);
+        i++;
+    }
+    mysql_free_result(res);
+    return rows;
+}
+
+int get_uids(uid_t *uids[]) {
+    const char *query = "select * from users";
+    if (mysql_query(mysql, query)) {
+        fprintf(stderr, "Query \"%s\" failed: %s\n", query, mysql_error(mysql));
+        return 0;
+    }
+    MYSQL_RES *res = mysql_store_result(mysql);
+    int rows = mysql_num_rows(res);
+    (*uids) = (uid_t *) malloc(rows * sizeof(ext2_ino_t));
+    MYSQL_ROW row;
+    int i = 0;
+    while ((row = mysql_fetch_row(res))) {
+        (*uids)[i] = (uid_t) strtol(row[0], NULL, 10);
         i++;
     }
     mysql_free_result(res);

@@ -18,7 +18,7 @@
 static MYSQL *mysql;
 
 // callback function used by walk_dir()
-typedef bool (*callback)(ino_t);
+typedef bool (*callback)(uid_t, ino_t);
 
 //Connect to MySQL, returns 0 upon success, returns -1 upon failure.
 int connect_to_mysql();
@@ -45,23 +45,26 @@ bool execute_cud(const char *query);
 bool auth(const char *hashed_password);
 
 // Add a file with the given ino_t into file-vault, returns true upon success, returns false upon failure.
-bool add_ino(ino_t ino);
+bool add_ino(uid_t, ino_t ino);
 
 // Remove a file with the given ino_t from file-vault, returns true upon success, returns false upon failure.
-bool remove_ino(ino_t ino);
+bool remove_ino(uid_t, ino_t ino);
 
 //Remove a file from file-vault, returns true upon success, returns false upon failure.
-bool remove_file(const char *filepath);
+bool remove_file(uid_t, const char *filepath);
 
 //Add a file into file-vault, returns true upon success, returns false upon failure.
-bool add_file(const char *filepath);
+bool add_file(uid_t, const char *filepath);
 
 // Add(remove) all files in the given directory into(from) file-vault recursively.
-void walk_dir(const char *path, callback);
+void walk_dir(uid_t ,const char *path, callback);
+
+// get uid of all registered users.
+int get_uids(uid_t *uids[]);
 
 // fetch inode number of all files in the file vault.
-int fetch_inodes(ext2_ino_t **);
+int fetch_inodes(uid_t, ext2_ino_t **);
 
-int iter_callback(struct ext2_dir_entry*,int,int,char *,void *);
+int iter_callback(struct ext2_dir_entry *, int, int, char *, void *);
 
 #endif //FILE_VAULT_MYSQL_H

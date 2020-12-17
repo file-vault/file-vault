@@ -63,9 +63,9 @@ int check_privilege(char *pbuf, uint16_t len)
     // printk("%s\n",pbuf);
     // printk("%d\n",rspbuf.data[seq]);
     // return 0;
-    //if(printk_ratelimit()){
-    //    printk("send: %d\n",nlh->nlmsg_seq);
-    //}
+    if(printk_ratelimit()){
+        printk("send: %d\n",nlh->nlmsg_seq);
+    }
     nlmsg_unicast(nlsk, skb, USER_PORT);
     // if(printk_ratelimit()){
     //     printk("down signal:%d\n",rspbuf.sem[seq].count);
@@ -115,11 +115,11 @@ static void netlink_rcv_msg(struct sk_buff *skb)
         else
         {
             rspbuf.data[nlh->nlmsg_seq] = (int)(umsg[0])-48;
-            //if(printk_ratelimit()){
-            //    printk("rev:%d\n",nlh->nlmsg_seq);
+            if(printk_ratelimit()){
+                printk("rev:%d\n",nlh->nlmsg_seq);
             //     printk("after data:%d\n",rspbuf.data[nlh->nlmsg_seq]);
             //     printk("up signal1:%d\n",rspbuf.sem[nlh->nlmsg_seq].count);
-            //}
+            }
             up(&rspbuf.sem[nlh->nlmsg_seq]);
             // if(printk_ratelimit()){
             //     printk("up signal2:%d\n",rspbuf.sem[nlh->nlmsg_seq].count);
